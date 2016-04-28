@@ -3,12 +3,22 @@ package com.cogn.wifirecord;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
+import android.util.FloatMath;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
+
+import static android.util.FloatMath.sqrt;
+import static java.lang.Math.pow;
 
 /*
 Taken from https://sites.google.com/site/androidhowto/how-to-1/custom-scrollable-image-view
@@ -19,15 +29,19 @@ public class ScrollImageView extends View {
     private Bitmap mImage;
 
     /* Current x and y of the touch */
-    private float mCurrentX = 0;
-    private float mCurrentY = 0;
-
-    private float mTotalX = 0;
-    private float mTotalY = 0;
-
+    public float mCurrentX = 0;
+    public float mCurrentY = 0;
+    public float mTotalX = 0;
+    public float mTotalY = 0;
     /* The touch distance change from the current touch */
-    private float mDeltaX = 0;
-    private float mDeltaY = 0;
+    public float mDeltaX = 0;
+    public float mDeltaY = 0;
+
+    public List<Float> circleX = new ArrayList<Float>();
+    public List<Float> circleY = new ArrayList<Float>();
+    public Float latestCircleX = null;
+    public Float latestCircleY = null;
+
 
     int mDisplayWidth;
     int mDisplayHeight;
@@ -86,28 +100,6 @@ public class ScrollImageView extends View {
         this.mPadding = padding;
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            mCurrentX = event.getRawX();
-            mCurrentY = event.getRawY();
-        }
-        else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-            float x = event.getRawX();
-            float y = event.getRawY();
-
-            // Update how much the touch moved
-            mDeltaX = x - mCurrentX;
-            mDeltaY = y - mCurrentY;
-
-            mCurrentX = x;
-            mCurrentY = y;
-
-            invalidate();
-        }
-        // Consume event
-        return true;
-    }
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -126,6 +118,17 @@ public class ScrollImageView extends View {
             mTotalY += mDeltaY;
 
         Paint paint = new Paint();
+        Paint circlePaint = new Paint();
+        circlePaint.setColor(Color.GREEN);
+        circlePaint.setStrokeWidth(2);
+        circlePaint.setStyle(Paint.Style.FILL);
+
         canvas.drawBitmap(mImage, mTotalX, mTotalY, paint);
+        Iterator<Float> xIter = circleX.iterator();
+        Iterator<Float> yIter = circleY.iterator();
+        while (xIter.hasNext() && yIter.hasNext()){
+            canvas.drawCircle(xIter.next()+mTotalX, yIter.next()+mTotalY, 10, circlePaint);
+        }
+
     }
 }
