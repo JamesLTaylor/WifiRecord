@@ -1,0 +1,24 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".RecordActivity" >
+
+    <item android:id="@+id/menu_select_location"
+        android:title="Select Location"
+        android:showAsAction="never" />
+
+    <item android:id="@+id/menu_select_level"
+        android:title="Select Level"
+        android:showAsAction="never" />
+
+    <item android:id="@+id/menu_show_existing"
+        android:titleCondensed="Show Existing"
+        android:title="Show Existing Points"
+        android:icon="@android:drawable/ic_menu_preferences"
+        android:checkable="true"
+        android:checked="true"/>
+
+    <item android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        android:orderInCategory="100"
+        android:showAsAction="never" />
+</menu>
