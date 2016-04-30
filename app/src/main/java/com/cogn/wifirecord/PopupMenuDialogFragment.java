@@ -26,7 +26,6 @@ public class PopupMenuDialogFragment extends DialogFragment implements View.OnCl
     }
 
     private OptionSetListener mListener;
-    private String type; // Used to communicate back to the event handler in the main activity
 
     public PopupMenuDialogFragment() {
         // Required empty public constructor
@@ -43,11 +42,9 @@ public class PopupMenuDialogFragment extends DialogFragment implements View.OnCl
             ViewGroup container,
             Bundle savedInstanceState) {
 
-        //return inflater.inflate(R.layout.fragment_location, container, false);
         LinearLayout linLayout=new LinearLayout(getActivity());
         linLayout.setOrientation(LinearLayout.VERTICAL);
 
-        type = getArguments().getString("type");
         Iterator<String> options = getArguments().getStringArrayList("options").iterator();
 
         while (options.hasNext())
@@ -81,10 +78,9 @@ public class PopupMenuDialogFragment extends DialogFragment implements View.OnCl
 
     @Override
     public void onClick(View view) {
-        Bundle results = new Bundle();
+        Bundle results = new Bundle(getArguments());
         String value = ((Button)view).getText().toString();
         results.putString("value", value);
-        results.putString("type", type);
         mListener.onOptionSet(results);
     }
 

@@ -90,6 +90,17 @@ public class ScrollImageView extends View {
 
     public void setImage(Bitmap image) {
         mImage = image;
+        mCurrentX = 0;
+        mCurrentY = 0;
+        mTotalX = 0;
+        mTotalY = 0;
+        mDeltaX = 0;
+        mDeltaY = 0;
+
+        circleX = new ArrayList<Float>();
+        circleY = new ArrayList<Float>();
+        latestCircleX = null;
+        latestCircleY = null;
     }
 
     public int getPadding() {
