@@ -10,12 +10,16 @@
         android:title="Select Level"
         android:showAsAction="never" />
 
+    <item android:id="@+id/menu_manual_record"
+        android:title="Manual"
+        android:showAsAction="ifRoom" />
+
     <item android:id="@+id/menu_show_existing"
-        android:titleCondensed="Show Existing"
-        android:title="Show Existing Points"
-        android:icon="@android:drawable/ic_menu_preferences"
-        android:checkable="true"
-        android:checked="true"/>
+    android:titleCondensed="Show Existing"
+    android:title="Show Existing Points"
+    android:icon="@android:drawable/ic_menu_preferences"
+    android:checkable="true"
+    android:checked="true"/>
 
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"

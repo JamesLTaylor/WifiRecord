@@ -42,6 +42,8 @@ public class ScrollImageView extends View {
     public Float latestCircleX = null;
     public Float latestCircleY = null;
 
+    public String scanProgress = null;
+
 
     int mDisplayWidth;
     int mDisplayHeight;
@@ -111,7 +113,6 @@ public class ScrollImageView extends View {
         this.mPadding = padding;
     }
 
-
     @Override
     protected void onDraw(Canvas canvas) {
         if (mImage == null) {
@@ -139,6 +140,11 @@ public class ScrollImageView extends View {
         Iterator<Float> yIter = circleY.iterator();
         while (xIter.hasNext() && yIter.hasNext()){
             canvas.drawCircle(xIter.next()+mTotalX, yIter.next()+mTotalY, 10, circlePaint);
+        }
+        Paint textPaint = new Paint();
+        paint.setColor(Color.BLACK);
+        if (scanProgress!=null) {
+            canvas.drawText(scanProgress, mCurrentX, mCurrentY, textPaint);
         }
 
     }

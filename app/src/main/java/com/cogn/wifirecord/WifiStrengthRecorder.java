@@ -35,10 +35,12 @@ public class WifiStrengthRecorder {
     private int N;
     private long startTimeMillis;
     private long scanBase = 0;
+    private RecordActivity callingActivity;
 
 
-    public WifiStrengthRecorder(String location, WifiManager wifiManager, Context context)
+    public WifiStrengthRecorder(String location, WifiManager wifiManager, Context context, RecordActivity recordActivity)
     {
+        callingActivity = recordActivity;
         this.wifiManager = wifiManager;
         macLookup = new MacLookup(location);
         File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord");
@@ -67,6 +69,24 @@ public class WifiStrengthRecorder {
         }
     }
 
+    private void UpdateProgressOnUIThread(final String newText)
+    {
+        callingActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                callingActivity.UpdateScanProgress(newText);
+            }
+        });
+    }
+
+    /**
+     * Make a set of recordings and push the counter up to the UI thread.
+     * @param x
+     * @param y
+     * @param level
+     * @param N
+     * @param delay
+     */
     public void MakeRecording(float x, float y, int level, int N, int delay) {
         Calendar c = Calendar.getInstance();
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -84,6 +104,7 @@ public class WifiStrengthRecorder {
             ArrayList<Integer> oldScanned = null;
             List<ScanResult> scanned;
             while (counter<N){
+                UpdateProgressOnUIThread("" + counter + " of " + N);
                 scanned = wifiManager.getScanResults();
                 if (HaveChanged(oldScanned, scanned)) {
                     offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;

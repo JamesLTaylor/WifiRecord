@@ -3,14 +3,13 @@ package com.cogn.wifirecord;
 import android.app.Activity;
 import android.app.DialogFragment;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.util.FloatMath;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -18,17 +17,10 @@ import android.view.View;
 import android.view.View.OnTouchListener;
 import android.widget.LinearLayout;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +33,11 @@ public class RecordActivity extends Activity
     private static final String TAG = "WIFI";
     private PopupMenuDialogFragment menu;
     private ScrollImageView floorMapView;
+
+    public void UpdateScanProgress(String newText) {
+        floorMapView.scanProgress = newText;
+        floorMapView.invalidate();
+    }
 
     private class FloorPlanImageList{
         private List<Integer> ids = new ArrayList<Integer>();
@@ -108,7 +105,7 @@ public class RecordActivity extends Activity
         }
 
         wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-        wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext());
+        wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
 
         floorplans.put("Greenstone", new FloorPlanImageList());
         floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
@@ -203,12 +200,19 @@ public class RecordActivity extends Activity
     private void UpdateFloorplan() {
         Bitmap floorMapImage = BitmapFactory.decodeResource(this.getResources(),
                 floorplans.get(currentPlan).GetResource(currentLevel));
+
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
         floorMapView.setImage(floorMapImage);
         floorMapView.invalidate();
     }
 
-    public void makeRecording(float x, float y, int level, int N, int delay) {
-        wifiRecorder.MakeRecording(x, y, level, N, delay);
+    public void makeRecording(final float x, final float y, final int level, final int N, final int delay) {
+        new Thread(new Runnable() {
+            public void run() {
+                wifiRecorder.MakeRecording(x, y, level, N, delay);
+            }
+        }).start();
     }
 
 
@@ -230,6 +234,11 @@ public class RecordActivity extends Activity
                 menu.setArguments(options);
                 menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
                 menu.show(getFragmentManager(), "menu");
+                return true;
+            }
+            case R.id.menu_manual_record: {
+                Intent intent = new Intent(this, ManualRecordActivity.class);
+                startActivity(intent);
                 return true;
             }
             case R.id.menu_select_level: {
@@ -263,7 +272,7 @@ public class RecordActivity extends Activity
             case "location":
                 currentPlan = results.getString("value");
                 currentLevel = floorplans.get(currentPlan).GetDefault();
-                wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext());
+                wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
                 UpdateFloorplan();
                 menu.dismiss();
                 return;
