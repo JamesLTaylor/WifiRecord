@@ -37,6 +37,8 @@ public class WifiStrengthRecorder {
     private long scanBase = 0;
     private RecordActivity callingActivity;
 
+    private boolean isRecording = false;
+
 
     public WifiStrengthRecorder(String location, WifiManager wifiManager, Context context, RecordActivity recordActivity)
     {
@@ -44,6 +46,9 @@ public class WifiStrengthRecorder {
         this.wifiManager = wifiManager;
         macLookup = new MacLookup(location);
         File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord");
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
         file = new File(folder, location.toLowerCase().trim() + "_readings.txt");
         if (!file.exists()) {
             try {
@@ -57,6 +62,11 @@ public class WifiStrengthRecorder {
         //IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         //WifiScanReceiver receiver = new WifiScanReceiver();
         //context.registerReceiver(receiver, intentFilter);
+    }
+
+    public void SetActivity(RecordActivity recordActivity)
+    {
+        callingActivity = recordActivity;
     }
 
     @Override
@@ -75,6 +85,16 @@ public class WifiStrengthRecorder {
             @Override
             public void run() {
                 callingActivity.UpdateScanProgress(newText);
+            }
+        });
+    }
+
+    private void SetScanFinished()
+    {
+        callingActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                callingActivity.SetScanFinished();
             }
         });
     }
@@ -104,7 +124,7 @@ public class WifiStrengthRecorder {
             ArrayList<Integer> oldScanned = null;
             List<ScanResult> scanned;
             while (counter<N){
-                UpdateProgressOnUIThread("" + counter + " of " + N);
+                UpdateProgressOnUIThread("" + (counter+1) + " of " + N);
                 scanned = wifiManager.getScanResults();
                 if (HaveChanged(oldScanned, scanned)) {
                     offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
@@ -125,6 +145,7 @@ public class WifiStrengthRecorder {
                 }
                 wifiManager.startScan();
             }
+            SetScanFinished();
             filewriter.close();
         } catch (IOException e) {
             Log.e(TAG, "could not make file", e);

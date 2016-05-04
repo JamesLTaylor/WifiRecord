@@ -28,65 +28,19 @@ import static android.util.FloatMath.sqrt;
 
 
 public class RecordActivity extends Activity
-    implements PopupMenuDialogFragment.OptionSetListener {
+    implements PopupMenuDialogFragment.OptionSetListener, ScrollImageView.RecordMenuMaker{
 
     private static final String TAG = "WIFI";
     private PopupMenuDialogFragment menu;
     private ScrollImageView floorMapView;
-
-    public void UpdateScanProgress(String newText) {
-        floorMapView.scanProgress = newText;
-        floorMapView.invalidate();
-    }
-
-    private class FloorPlanImageList{
-        private List<Integer> ids = new ArrayList<Integer>();
-        public ArrayList<String> descriptions = new ArrayList<String>();
-        private List<Integer> resourceIDs = new ArrayList<Integer>();
-        public FloorPlanImageList(){}
-        public void add(int id, String description, int resourceID)
-        {
-            this.ids.add(id);
-            this.descriptions.add(description);
-            this.resourceIDs.add(resourceID);
-        }
-        public int IDFromDescription(String description){
-            Integer pos = descriptions.indexOf(description);
-            if (pos>=0) return ids.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public String DescriptionFromID(Integer id){
-            Integer pos = ids.indexOf(id);
-            if (pos>=0) return descriptions.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public Integer GetResource(Integer id)
-        {
-            Integer pos = ids.indexOf(id);
-            if (pos>=0) return resourceIDs.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided id does not exist in the list");
-        }
-        public Integer GetResource(String description)
-        {
-            Integer pos = descriptions.indexOf(description);
-            if (pos>=0) return resourceIDs.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public String GetDefault()
-        {
-            return descriptions.get(0);
-        }
-    }
-
     private Map<String, FloorPlanImageList> floorplans = new HashMap<String, FloorPlanImageList>();
-
     static final String RO_RECORD = "Record Wifi at this Point";
     static final String RO_DELETE = "Delete this point";
     private ArrayList<String> recordOptions = new ArrayList<String>(Arrays.asList(RO_RECORD, RO_DELETE));
     private String currentPlan;
     private String currentLevel;
     private WifiManager wifiManager;
-    private WifiStrengthRecorder wifiRecorder;
+    private static WifiStrengthRecorder wifiRecorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,18 +48,18 @@ public class RecordActivity extends Activity
 
         currentPlan = "Greenstone";
         currentLevel = "Lower Level";
+        wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
 
         if (savedInstanceState==null) {
             currentPlan = "Greenstone";
             currentLevel = "Lower Level";
+            wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
         }
         else {
             currentPlan = savedInstanceState.getString("currentPlan");
             currentLevel = savedInstanceState.getString("currentLevel");
+            wifiRecorder.SetActivity(this);
         }
-
-        wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-        wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
 
         floorplans.put("Greenstone", new FloorPlanImageList());
         floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
@@ -118,83 +72,35 @@ public class RecordActivity extends Activity
         setContentView(R.layout.activity_record);
         LinearLayout myLayout = (LinearLayout)findViewById(R.id.recordLayout);
 
-        floorMapView = new ScrollImageView(this);
+        floorMapView = new ScrollImageView(this, this);
 
         floorMapView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT));
 
         UpdateFloorplan();
-        floorMapView.setOnTouchListener(planTouchListener);
         myLayout.addView(floorMapView);
 
-    }
-
-    private OnTouchListener planTouchListener = new OnTouchListener() {
-        private long startClickTime;
-
-        @Override
-        public boolean onTouch(View view, MotionEvent event) {
-            ScrollImageView imV = (ScrollImageView)view;
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                startClickTime = Calendar.getInstance().getTimeInMillis();
-                imV.mCurrentX = event.getX();
-                imV.mCurrentY = event.getY();
-            }
-            else if (event.getAction()==MotionEvent.ACTION_UP){
-                long clickDuration = Calendar.getInstance().getTimeInMillis() - startClickTime;
-                float imageX = imV.mCurrentX-imV.mTotalX;
-                float imageY = imV.mCurrentY-imV.mTotalY;
-                if(clickDuration < 200) {
-                    //click event has occurred
-                    boolean addCircle = true;
-                    if (imV.latestCircleX!=null && imV.latestCircleY!=null) {
-                        float dist = sqrt(FloatMath.pow(imV.latestCircleX - imageX, 2) + FloatMath.pow(imV.latestCircleY - imageY, 2));
-                        if (dist < 50.0) {
-                            menu = new PopupMenuDialogFragment();
-                            Bundle bundle = new Bundle();
-                            bundle.putStringArrayList("options", recordOptions);
-                            bundle.putString("type", "record");
-                            bundle.putFloat("x", imV.latestCircleX);
-                            bundle.putFloat("y", imV.latestCircleY);
-                            menu.setArguments(bundle);
-                            menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-                            menu.show(getFragmentManager(), "menu");
-                            addCircle = false;
-                        }
-                    }
-                    if (addCircle) {
-                        imV.latestCircleX = imageX;
-                        imV.latestCircleY = imageY;
-                        imV.circleX.add(imageX);
-                        imV.circleY.add(imageY);
-                    }
-                }
-                imV.invalidate();
-            }
-            else if (event.getAction() == MotionEvent.ACTION_MOVE) {
-                float x = event.getX();
-                float y = event.getY();
-
-                // Update how much the touch moved
-                imV.mDeltaX = x - imV.mCurrentX;
-                imV.mDeltaY = y - imV.mCurrentY;
-
-                imV.mCurrentX = x;
-                imV.mCurrentY = y;
-                imV.invalidate();
-            }
-            // Consume event
-            return true;
+        floorMapView.invalidate();
+        if (savedInstanceState!=null) {
+            Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
+            floorMapView.SetState(floorMapViewState);
         }
-    };
 
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.record, menu);
         return true;
+    }
+
+    public void UpdateScanProgress(String newText) {
+        floorMapView.UpdateScanProgress(newText);
+    }
+    public void SetScanFinished() {
+        floorMapView.SetScanFinished();
     }
 
     private void UpdateFloorplan() {
@@ -207,6 +113,15 @@ public class RecordActivity extends Activity
         floorMapView.invalidate();
     }
 
+
+    /**
+     *
+     * @param x actual pixel location of recording.  screen x needs to adjusted
+     * @param y
+     * @param level
+     * @param N The number of scans that will take place
+     * @param delay
+     */
     public void makeRecording(final float x, final float y, final int level, final int N, final int delay) {
         new Thread(new Runnable() {
             public void run() {
@@ -216,7 +131,12 @@ public class RecordActivity extends Activity
     }
 
 
-
+    /**
+     * Item selected in main action bar menu
+     *
+     * @param item
+     * @return
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -263,8 +183,13 @@ public class RecordActivity extends Activity
         super.onSaveInstanceState(outState);
         outState.putString("currentPlan", currentPlan);
         outState.putString("currentLevel", currentLevel);
+        outState.putBundle("floorMapViewState", floorMapView.GetState());
     }
 
+    /**
+     * This handles the button clicking on the submenus that pop up for various reasons.
+     * @param results
+     */
     @Override
     public void onOptionSet(Bundle results) {
         String type = results.getString("type");
@@ -288,6 +213,7 @@ public class RecordActivity extends Activity
                         makeRecording(results.getFloat("x"), results.getFloat("y"), 0, 10, 500);
                         break;
                     case RO_DELETE:
+                        floorMapView.DeletePoint();
                         break;
                     default:
                         throw new IllegalArgumentException("Not a known menu option: " + value);
@@ -295,6 +221,59 @@ public class RecordActivity extends Activity
                 menu.dismiss();
                 return;
 
+        }
+    }
+
+    @Override
+    public void MakeRecordMenu(float x, float y) {
+        menu = new PopupMenuDialogFragment();
+        Bundle bundle = new Bundle();
+        bundle.putStringArrayList("options", recordOptions);
+        bundle.putString("type", "record");
+        bundle.putFloat("x", x);
+        bundle.putFloat("y", y);
+        menu.setArguments(bundle);
+        menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
+        menu.show(getFragmentManager(), "menu");
+    }
+
+
+    private class FloorPlanImageList{
+        private List<Integer> ids = new ArrayList<Integer>();
+        public ArrayList<String> descriptions = new ArrayList<String>();
+        private List<Integer> resourceIDs = new ArrayList<Integer>();
+        public FloorPlanImageList(){}
+        public void add(int id, String description, int resourceID)
+        {
+            this.ids.add(id);
+            this.descriptions.add(description);
+            this.resourceIDs.add(resourceID);
+        }
+        public int IDFromDescription(String description){
+            Integer pos = descriptions.indexOf(description);
+            if (pos>=0) return ids.get(pos);
+            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
+        }
+        public String DescriptionFromID(Integer id){
+            Integer pos = ids.indexOf(id);
+            if (pos>=0) return descriptions.get(pos);
+            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
+        }
+        public Integer GetResource(Integer id)
+        {
+            Integer pos = ids.indexOf(id);
+            if (pos>=0) return resourceIDs.get(pos);
+            else throw new ArrayIndexOutOfBoundsException("provided id does not exist in the list");
+        }
+        public Integer GetResource(String description)
+        {
+            Integer pos = descriptions.indexOf(description);
+            if (pos>=0) return resourceIDs.get(pos);
+            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
+        }
+        public String GetDefault()
+        {
+            return descriptions.get(0);
         }
     }
 }

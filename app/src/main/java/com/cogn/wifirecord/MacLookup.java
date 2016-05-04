@@ -27,6 +27,9 @@ public class MacLookup {
         ssids = new ArrayList<String>();
         File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord");
         file = new File(folder, location.toLowerCase().trim() + "_macs.txt");
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
         if (!file.exists()) {
             try {
                 file.createNewFile();
