@@ -45,24 +45,35 @@ public class WifiStrengthRecorder {
         callingActivity = recordActivity;
         this.wifiManager = wifiManager;
         macLookup = new MacLookup(location);
-        File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord");
+        File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord/"+location);
         if (!folder.exists()) {
-            folder.mkdir();
+            folder.mkdirs();
         }
-        file = new File(folder, location.toLowerCase().trim() + "_readings.txt");
+        file = new File(folder, location.toLowerCase().trim() + "_readings_" + callingActivity.sessionStartTime +".txt");
+
+        //IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
+        //WifiScanReceiver receiver = new WifiScanReceiver();
+        //context.registerReceiver(receiver, intentFilter);
+    }
+
+    private void MakeFile(){
         if (!file.exists()) {
             try {
                 file.createNewFile();
+                BufferedWriter filewriter = new BufferedWriter(new FileWriter(file, true));
+                filewriter.write("DEVICE," + android.os.Build.BRAND + "," + android.os.Build.MODEL + "\n");
+                filewriter.close();
+
             } catch (IOException ioe)
             {
                 Log.e(TAG, "could not make file", ioe);
                 return;
             }
+            Log.d(TAG, android.os.Build.MODEL);
+            Log.d(TAG, android.os.Build.BRAND);
         }
-        //IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-        //WifiScanReceiver receiver = new WifiScanReceiver();
-        //context.registerReceiver(receiver, intentFilter);
     }
+
 
     public void SetActivity(RecordActivity recordActivity)
     {
@@ -108,6 +119,7 @@ public class WifiStrengthRecorder {
      * @param delay
      */
     public void MakeRecording(float x, float y, int level, int N, int delay) {
+        MakeFile();
         Calendar c = Calendar.getInstance();
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         Date startTime = c.getTime();

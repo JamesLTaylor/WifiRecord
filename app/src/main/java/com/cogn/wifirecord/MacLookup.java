@@ -25,10 +25,10 @@ public class MacLookup {
         macs = new ArrayList<String>();
         ids = new ArrayList<Integer>();
         ssids = new ArrayList<String>();
-        File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord");
+        File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord/"+location);
         file = new File(folder, location.toLowerCase().trim() + "_macs.txt");
         if (!folder.exists()) {
-            folder.mkdir();
+            folder.mkdirs();
         }
         if (!file.exists()) {
             try {
@@ -43,7 +43,6 @@ public class MacLookup {
         try {
             in = new BufferedReader(new FileReader(file));
             String str;
-            str = in.readLine();
             while ((str = in.readLine()) != null) {
                 String[] cols = str.split(",");
                 macs.add(cols[0]);

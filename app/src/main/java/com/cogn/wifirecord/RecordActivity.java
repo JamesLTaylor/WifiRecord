@@ -4,17 +4,17 @@ import android.app.Activity;
 import android.app.DialogFragment;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
-import android.util.FloatMath;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnTouchListener;
 import android.widget.LinearLayout;
 
 import java.util.ArrayList;
@@ -24,13 +24,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static android.util.FloatMath.sqrt;
 
 
 public class RecordActivity extends Activity
-    implements PopupMenuDialogFragment.OptionSetListener, ScrollImageView.RecordMenuMaker{
+    implements PopupMenuDialogFragment.OptionSetListener,
+        ScrollImageView.RecordMenuMaker,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String TAG = "WIFI";
+    public static String sessionStartTime = null;
     private PopupMenuDialogFragment menu;
     private ScrollImageView floorMapView;
     private Map<String, FloorPlanImageList> floorplans = new HashMap<String, FloorPlanImageList>();
@@ -41,24 +43,32 @@ public class RecordActivity extends Activity
     private String currentLevel;
     private WifiManager wifiManager;
     private static WifiStrengthRecorder wifiRecorder;
+    private Map<Integer, PreviousRecordings.ListPair> levelsAndPoints;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        currentPlan = "Greenstone";
-        currentLevel = "Lower Level";
+        if (sessionStartTime==null) {
+            Calendar c = Calendar.getInstance();
+            sessionStartTime = DataReadWrite.timeStampFormat.format(c.getTime());
+        }
+
+        currentPlan = "Home";
+        currentLevel = "Upstairs";
         wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
 
-        if (savedInstanceState==null) {
-            currentPlan = "Greenstone";
-            currentLevel = "Lower Level";
+        if (wifiRecorder == null) {
             wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
         }
         else {
+            wifiRecorder.SetActivity(this);
+        }
+
+
+        if (savedInstanceState!=null) {
             currentPlan = savedInstanceState.getString("currentPlan");
             currentLevel = savedInstanceState.getString("currentLevel");
-            wifiRecorder.SetActivity(this);
         }
 
         floorplans.put("Greenstone", new FloorPlanImageList());
@@ -86,7 +96,24 @@ public class RecordActivity extends Activity
             Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
             floorMapView.SetState(floorMapViewState);
         }
+        levelsAndPoints = PreviousRecordings.GetPreviousRecordings(currentPlan);
+        Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+        if (levelsAndPoints.containsKey(currentLevelID)) {
+            floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
+                    levelsAndPoints.get(currentLevelID).yList, null, null);
+        }
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
     }
 
     @Override
@@ -109,8 +136,7 @@ public class RecordActivity extends Activity
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
-        floorMapView.setImage(floorMapImage);
-        floorMapView.invalidate();
+        floorMapView.setImage(floorMapImage, density);
     }
 
 
@@ -119,10 +145,11 @@ public class RecordActivity extends Activity
      * @param x actual pixel location of recording.  screen x needs to adjusted
      * @param y
      * @param level
-     * @param N The number of scans that will take place
      * @param delay
      */
-    public void makeRecording(final float x, final float y, final int level, final int N, final int delay) {
+    public void makeRecording(final float x, final float y, final int level, final int delay) {
+        String nStr = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_number_of_scans), "20");
+        final int N = Integer.parseInt(nStr);
         new Thread(new Runnable() {
             public void run() {
                 wifiRecorder.MakeRecording(x, y, level, N, delay);
@@ -143,8 +170,11 @@ public class RecordActivity extends Activity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
-            case R.id.action_settings:
+            case R.id.action_settings: {
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
                 return true;
+            }
             case R.id.menu_select_location: {
                 View view = findViewById(R.id.recordLayout);
                 menu = new PopupMenuDialogFragment();
@@ -195,22 +225,42 @@ public class RecordActivity extends Activity
         String type = results.getString("type");
         switch (type) {
             case "location":
-                currentPlan = results.getString("value");
-                currentLevel = floorplans.get(currentPlan).GetDefault();
-                wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
-                UpdateFloorplan();
+                if (!currentPlan.equals(results.getString("value"))) {
+                    currentPlan = results.getString("value");
+                    currentLevel = floorplans.get(currentPlan).GetDefault();
+                    UpdateFloorplan();
+                    // read the files that store previous points
+                    // TODO: If this ends up being slow do it on another thread.
+                    levelsAndPoints = PreviousRecordings.GetPreviousRecordings(currentPlan);
+                    Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+                    if (levelsAndPoints.containsKey(currentLevelID)) {
+                        floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
+                                levelsAndPoints.get(currentLevelID).yList, null, null);
+                    }
+                    wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
+                    floorMapView.invalidate();
+                }
                 menu.dismiss();
                 return;
             case "level":
-                currentLevel = results.getString("value");
-                UpdateFloorplan();
+                if (!currentLevel.equals(results.getString("value"))) {
+                    currentLevel = results.getString("value");
+                    UpdateFloorplan();
+                    Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+                    if (levelsAndPoints.containsKey(currentLevelID)) {
+                        floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
+                                levelsAndPoints.get(currentLevelID).yList, null, null);
+                    }
+                    floorMapView.invalidate();
+                }
                 menu.dismiss();
                 return;
             case "record":
                 String value = results.getString("value");
                 switch (value) {
                     case RO_RECORD:
-                        makeRecording(results.getFloat("x"), results.getFloat("y"), 0, 10, 500);
+                        Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+                        makeRecording(results.getFloat("x"), results.getFloat("y"), currentLevelID, 500);
                         break;
                     case RO_DELETE:
                         floorMapView.DeletePoint();
@@ -224,6 +274,14 @@ public class RecordActivity extends Activity
         }
     }
 
+
+    /**
+     * Make a menu at the location of a second click on the floormap view, asking the user if they
+     * want to make a wifi recfording there or remove the point.
+     *
+     * @param x actual pixel location of click event.  Not device independent version.
+     * @param y
+     */
     @Override
     public void MakeRecordMenu(float x, float y) {
         menu = new PopupMenuDialogFragment();
@@ -237,7 +295,20 @@ public class RecordActivity extends Activity
         menu.show(getFragmentManager(), "menu");
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        Log.d("TAG",key);
+        if (key.equals(getString(R.string.key_number_of_scans))) {
+            String nStr = sharedPreferences.getString(getString(R.string.key_number_of_scans), "5");
+            Log.d("TAG",nStr);
+        }
 
+    }
+
+
+    /**
+     * Keeps the floormaps indexed by the location name and then a number and description for the levels.
+     */
     private class FloorPlanImageList{
         private List<Integer> ids = new ArrayList<Integer>();
         public ArrayList<String> descriptions = new ArrayList<String>();

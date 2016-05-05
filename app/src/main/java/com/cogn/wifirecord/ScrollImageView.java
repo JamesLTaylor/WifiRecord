@@ -32,6 +32,7 @@ public class ScrollImageView extends View {
     private final int DEFAULT_PADDING = 10;
     private Display mDisplay;
     private Bitmap mImage;
+    private float density;
     private int mPadding;
     private long startClickTime;
 
@@ -46,22 +47,38 @@ public class ScrollImageView extends View {
 
     private Float latestCircleX = null;
     private Float latestCircleY = null;
+    private Paint latestCirclePaint;
     private List<Float> thisSessionRecordedX = new ArrayList<Float>();
     private List<Float> thisSessionRecordedY = new ArrayList<Float>();
-    private Paint latestCirclePaint;
     private Paint thisSessionRecordedPaint;
+    private List<Float> previousSessionRecordedX = new ArrayList<Float>();
+    private List<Float> previousSessionRecordedY = new ArrayList<Float>();
+    private Paint previousSessionRecordedPaint;
+    private List<Float> summaryRecordedX = new ArrayList<Float>();
+    private List<Float> summaryRecordedY = new ArrayList<Float>();
+    private Paint summaryRecordedPaint;
+
 
 
     private String scanProgress = null;
     private Paint textPaint;
+
 
     /**
      * Interface to be implemented by activity that creates this view so that a record menu/dialog
      * can be displayed and acted on.
      */
     public interface RecordMenuMaker {
+        /**
+         * Pops up a menu at the point that has been clicked for a second time.  The calling activity
+         * gets to decide what that looks like.
+         *
+         * @param x actual pixel location of click event.  Not device independent version.
+         * @param y
+         */
         public void MakeRecordMenu(float x, float y);
     }
+
 
     public ScrollImageView(Context context, RecordMenuMaker recordMenuMaker) {
         super(context);
@@ -85,16 +102,76 @@ public class ScrollImageView extends View {
         thisSessionRecordedPaint.setStyle(Paint.Style.FILL);
         thisSessionRecordedPaint.setAntiAlias(true);
 
+        previousSessionRecordedPaint = new Paint();
+        previousSessionRecordedPaint.setColor(Color.CYAN);
+        previousSessionRecordedPaint.setStrokeWidth(2);
+        previousSessionRecordedPaint.setStyle(Paint.Style.FILL);
+        previousSessionRecordedPaint.setAntiAlias(true);
+
+        summaryRecordedPaint = new Paint();
+        summaryRecordedPaint.setColor(Color.DKGRAY);
+        summaryRecordedPaint.setStrokeWidth(2);
+        summaryRecordedPaint.setStyle(Paint.Style.FILL);
+        summaryRecordedPaint.setAntiAlias(true);
         textPaint = new Paint();
         textPaint.setColor(Color.BLACK);
     }
 
+    public Bitmap getImage() {
+        return mImage;
+    }
+
+    public void setImage(Bitmap image, float density) {
+        this.density = density;
+        mImage = image;
+        mCurrentX = 0;
+        mCurrentY = 0;
+        mTotalX = 0;
+        mTotalY = 0;
+        mDeltaX = 0;
+        mDeltaY = 0;
+
+        latestCircleX = null;
+        latestCircleY = null;
+        thisSessionRecordedX  = new ArrayList<Float>();
+        thisSessionRecordedY = new ArrayList<Float>();
+        previousSessionRecordedX  = new ArrayList<Float>();
+        previousSessionRecordedY = new ArrayList<Float>();
+        summaryRecordedX  = new ArrayList<Float>();
+        summaryRecordedY = new ArrayList<Float>();
+
+    }
+
+    /**
+     * Sets the points that have already been recorded on the current floorplan
+     *
+     * @param previousSessionRecordedX
+     * @param previousSessionRecordedY
+     * @param summaryRecordedX
+     * @param summaryRecordedY
+     */
+    public void SetPreviousPoints(List<Float> previousSessionRecordedX,
+                             List<Float> previousSessionRecordedY,
+                             List<Float> summaryRecordedX,
+                             List<Float> summaryRecordedY) {
+        this.previousSessionRecordedX = previousSessionRecordedX;
+        this.previousSessionRecordedY = previousSessionRecordedY;
+        this.summaryRecordedX = summaryRecordedX;
+        this.summaryRecordedY = summaryRecordedY;
+    }
+
+    /**
+     * Removes the latest circle added
+     */
     public void DeletePoint() {
         latestCircleX = null;
         latestCircleY = null;
         invalidate();
     }
 
+    /**
+     * Marks the latest circle as having been recorded
+     */
     public void AddRecordedPoint()
     {
         thisSessionRecordedX.add(latestCircleX);
@@ -130,7 +207,7 @@ public class ScrollImageView extends View {
                 if (latestCircleX!=null && latestCircleY!=null) {
                     float dist = sqrt(FloatMath.pow(latestCircleX - imageX, 2) + FloatMath.pow(latestCircleY - imageY, 2));
                     if (dist < 50.0) {
-                        recordMenuMaker.MakeRecordMenu(latestCircleX, latestCircleY);
+                        recordMenuMaker.MakeRecordMenu(latestCircleX/density, latestCircleY/density);
                     }
                 }
                 else {
@@ -180,24 +257,7 @@ public class ScrollImageView extends View {
         return result;
     }
 
-    public Bitmap getImage() {
-        return mImage;
-    }
 
-    public void setImage(Bitmap image) {
-        mImage = image;
-        mCurrentX = 0;
-        mCurrentY = 0;
-        mTotalX = 0;
-        mTotalY = 0;
-        mDeltaX = 0;
-        mDeltaY = 0;
-
-        thisSessionRecordedX  = new ArrayList<Float>();
-        thisSessionRecordedY = new ArrayList<Float>();
-        latestCircleX = null;
-        latestCircleY = null;
-    }
 
     public int getPadding() {
         return mPadding;
@@ -206,6 +266,8 @@ public class ScrollImageView extends View {
     public void setPadding(int padding) {
         this.mPadding = padding;
     }
+
+
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -232,19 +294,45 @@ public class ScrollImageView extends View {
 
         // Latest circle
         if (latestCircleX!=null &&  latestCircleY!=null) {
-            canvas.drawCircle(latestCircleX+mTotalX, latestCircleY+mTotalY, 10, latestCirclePaint);
+            canvas.drawCircle(latestCircleX+mTotalX, latestCircleY+mTotalY, 6*density, latestCirclePaint);
         }
 
         // This session circles
-        Iterator<Float> xIter = thisSessionRecordedX.iterator();
+        DrawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
+        /*Iterator<Float> xIter = thisSessionRecordedX.iterator();
         Iterator<Float> yIter = thisSessionRecordedY.iterator();
         while (xIter.hasNext() && yIter.hasNext()){
             canvas.drawCircle(xIter.next()+mTotalX, yIter.next()+mTotalY, 10, thisSessionRecordedPaint);
-        }
+        }*/
+
+        // Previous session circles
+        DrawCircles(canvas, previousSessionRecordedX, previousSessionRecordedY, previousSessionRecordedPaint);
+
+        // Points with summaries
+        DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
 
         // The current scan progress
+        // TODO: Add a nice partially transparant rectangle to hold the update.
         if (scanProgress!=null) {
             canvas.drawText(scanProgress, latestCircleX+mTotalX, latestCircleY+mTotalY, textPaint);
+        }
+    }
+
+    /**
+     * Add a set of circles to the image.
+     * TODO: Only display circles that are in view.
+     * @param canvas
+     * @param x
+     * @param y
+     * @param paint
+     */
+    private void DrawCircles(Canvas canvas, List<Float> x, List<Float> y, Paint paint){
+        if (x!=null && y!=null) {
+            Iterator<Float> xIter = x.iterator();
+            Iterator<Float> yIter = y.iterator();
+            while (xIter.hasNext() && yIter.hasNext()) {
+                canvas.drawCircle(xIter.next() + mTotalX, yIter.next() + mTotalY, 6 * density, paint);
+            }
         }
     }
 
