@@ -1,33 +1,29 @@
 package com.cogn.wifirecord;
 
-import android.app.DialogFragment;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
-import android.util.AttributeSet;
 import android.util.FloatMath;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
 
 import static android.util.FloatMath.sqrt;
-import static java.lang.Math.pow;
 
 /*
 Taken from https://sites.google.com/site/androidhowto/how-to-1/custom-scrollable-image-view
  */
 public class ScrollImageView extends View {
+    public enum ViewMode {LOCATE, RECORD}
     private RecordMenuMaker recordMenuMaker;
     private final int DEFAULT_PADDING = 10;
     private Display mDisplay;
@@ -35,6 +31,8 @@ public class ScrollImageView extends View {
     private float density;
     private int mPadding;
     private long startClickTime;
+    private ViewMode viewMode;
+
 
     /* Current x and y of the touch */
     private float mCurrentX = 0;
@@ -54,11 +52,10 @@ public class ScrollImageView extends View {
     private List<Float> previousSessionRecordedX = new ArrayList<Float>();
     private List<Float> previousSessionRecordedY = new ArrayList<Float>();
     private Paint previousSessionRecordedPaint;
-    private List<Float> summaryRecordedX = new ArrayList<Float>();
-    private List<Float> summaryRecordedY = new ArrayList<Float>();
+    private List<Float> summaryRecordedX = new ArrayList<>();
+    private List<Float> summaryRecordedY = new ArrayList<>();
+    private List<String> summaryScores = new ArrayList<>();
     private Paint summaryRecordedPaint;
-
-
 
     private String scanProgress = null;
     private Paint textPaint;
@@ -80,10 +77,15 @@ public class ScrollImageView extends View {
     }
 
 
-    public ScrollImageView(Context context, RecordMenuMaker recordMenuMaker) {
+    public ScrollImageView(Context context, RecordMenuMaker recordMenuMaker, ViewMode viewMode) {
         super(context);
+        this.viewMode = viewMode;
         this.recordMenuMaker = recordMenuMaker;
         initScrollImageView(context);
+    }
+
+    public void SetViewMode(ViewMode viewMode){
+        this.viewMode = viewMode;
     }
 
     private void initScrollImageView(Context context) {
@@ -109,12 +111,14 @@ public class ScrollImageView extends View {
         previousSessionRecordedPaint.setAntiAlias(true);
 
         summaryRecordedPaint = new Paint();
-        summaryRecordedPaint.setColor(Color.DKGRAY);
+        summaryRecordedPaint.setColor(Color.YELLOW);
         summaryRecordedPaint.setStrokeWidth(2);
         summaryRecordedPaint.setStyle(Paint.Style.FILL);
         summaryRecordedPaint.setAntiAlias(true);
         textPaint = new Paint();
         textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(16);
+        textPaint.setFakeBoldText(true);
     }
 
     public Bitmap getImage() {
@@ -189,10 +193,47 @@ public class ScrollImageView extends View {
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        switch (viewMode) {
+            case RECORD: {
+                onTouchEventRecord(event);
+                break;
+            }
+            case LOCATE:
+                onTouchEventLocate(event);
+                break;
+        }
+        return true;
+    }
+
+    private boolean onTouchEventLocate(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            mCurrentX = event.getX();
+            mCurrentY = event.getY();
+            return true;
+        }
+        else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            float x = event.getX();
+            float y = event.getY();
+
+            // Update how much the touch moved
+            mDeltaX = x - mCurrentX;
+            mDeltaY = y - mCurrentY;
+
+            mCurrentX = x;
+            mCurrentY = y;
+            invalidate();
+        }
+        // Consume event
+        return true;
+    }
+
+
+    private boolean onTouchEventRecord(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             startClickTime = Calendar.getInstance().getTimeInMillis();
             mCurrentX = event.getX();
             mCurrentY = event.getY();
+            return true;
         }
         else if (event.getAction()==MotionEvent.ACTION_UP){
             long clickDuration = Calendar.getInstance().getTimeInMillis() - startClickTime;
@@ -220,6 +261,7 @@ public class ScrollImageView extends View {
                 }
             }
             invalidate();
+            return true;
         }
         else if (event.getAction() == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
@@ -298,32 +340,34 @@ public class ScrollImageView extends View {
         // Don't scroll off the top or bottom edges of the bitmap.
         if (mPadding > newTotalY && newTotalY > getMeasuredHeight() - mImage.getHeight() - mPadding)
             mTotalY += mDeltaY;
-
         canvas.drawBitmap(mImage, mTotalX, mTotalY, new Paint());
 
-        // Latest circle
-        if (latestCircleX!=null &&  latestCircleY!=null) {
-            canvas.drawCircle(latestCircleX+mTotalX, latestCircleY+mTotalY, 6*density, latestCirclePaint);
-        }
+        if (viewMode==ViewMode.RECORD) {
+            // Latest circle
+            if (latestCircleX != null && latestCircleY != null) {
+                canvas.drawCircle(latestCircleX + mTotalX, latestCircleY + mTotalY, 6 * density, latestCirclePaint);
+            }
+            // This session circles
+            DrawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
+            // Previous session circles
+            DrawCircles(canvas, previousSessionRecordedX, previousSessionRecordedY, previousSessionRecordedPaint);
+            // Points with summaries
+            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
+            // The current scan progress
+            // TODO: Add a nice partially transparant rectangle to hold the update.
+            if (scanProgress != null) {
+                canvas.drawText(scanProgress, latestCircleX + mTotalX, latestCircleY + mTotalY, textPaint);
+            }
+        } else if (viewMode==ViewMode.LOCATE) {
+            Iterator<Float> xIter = summaryRecordedX.iterator();
+            Iterator<Float> yIter = summaryRecordedY.iterator();
+            Iterator<String> scoreIter = summaryScores.iterator();
 
-        // This session circles
-        DrawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
-        /*Iterator<Float> xIter = thisSessionRecordedX.iterator();
-        Iterator<Float> yIter = thisSessionRecordedY.iterator();
-        while (xIter.hasNext() && yIter.hasNext()){
-            canvas.drawCircle(xIter.next()+mTotalX, yIter.next()+mTotalY, 10, thisSessionRecordedPaint);
-        }*/
-
-        // Previous session circles
-        DrawCircles(canvas, previousSessionRecordedX, previousSessionRecordedY, previousSessionRecordedPaint);
-
-        // Points with summaries
-        DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
-
-        // The current scan progress
-        // TODO: Add a nice partially transparant rectangle to hold the update.
-        if (scanProgress!=null) {
-            canvas.drawText(scanProgress, latestCircleX+mTotalX, latestCircleY+mTotalY, textPaint);
+            // Points with summaries
+            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
+            while (xIter.hasNext() && yIter.hasNext()) {
+                canvas.drawText(scoreIter.next(), xIter.next() + mTotalX, yIter.next() + mTotalY, textPaint);
+            }
         }
     }
 
@@ -405,8 +449,18 @@ public class ScrollImageView extends View {
      * Show the progress of the current scan on the map.
      * @param newText
      */
-    public void UpdateScanProgress(String newText) {
+    public void UpdateRecordProgress(String newText) {
         scanProgress = newText;
+        invalidate();
+    }
+
+    /**
+     *
+     * @param summaryScores the scores for the current level.  The list must be exactly the same
+     *                      length as the x and y lists.
+     */
+    public void UpdateLocateProgress(List<String> summaryScores) {
+        this.summaryScores = summaryScores;
         invalidate();
     }
 

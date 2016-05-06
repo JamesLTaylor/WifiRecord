@@ -95,7 +95,7 @@ public class WifiStrengthRecorder {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateScanProgress(newText);
+                callingActivity.UpdateRecordProgress(newText);
             }
         });
     }

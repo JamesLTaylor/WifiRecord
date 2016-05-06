@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -104,6 +105,61 @@ public class ReadingSummaryList {
             }
         }
         return fileToUse;
+    }
+
+    public List<String> GetScores(HashMap<Integer, List<Float>> testSummary, int levelID) {
+        List<String> scores = new ArrayList<>();
+        float score;
+        for (ReadingSummary summary : summaryList) {
+            if (summary.level==levelID) {
+                score = GetScore(summary.stats, testSummary);
+                scores.add(String.format(Locale.US, "%.1f", score));
+            }
+        }
+        return scores;
+    }
+
+
+    private float GetScore(Map<Integer, List<Float>> recordedSummary, Map<Integer, List<Float>> obsSummary) {
+        float score = 0;
+        float w1 = 1;
+        float w2 = 1;
+        float w3 = 2;
+        float weighting = 0;
+        for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
+            float recordedMean = recordedEntry.getValue().get(1);
+            weighting += recordedEntry.getValue().get(0);
+            if (obsSummary.containsKey(recordedEntry.getKey())) {
+                // in fingerprint and in obs
+                score -= w1 * Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1)) * weighting;
+                //dbprint("in both: ")
+                //dbprint(loc_stats)
+                //dbprint(obs[loc_mac_key])
+            } else {
+                // in fingerprint but not in obs
+                if (recordedMean > -90) {
+                    score -= w2 * weighting * Math.abs(-90 - recordedMean);
+                    //dbprint("not in obs: ")
+                    //dbprint(loc_stats)
+                }
+            }
+        }
+        for (Map.Entry<Integer, List<Float>> obsEntry : obsSummary.entrySet()) {
+            if (!recordedSummary.containsKey(obsEntry.getKey())){
+                //in obs but not fingerprint
+                float obsP = obsEntry.getValue().get(0);
+                float obsMean = obsEntry.getValue().get(1);
+                if (obsMean > -90) {
+                    score -= w3 * obsP * Math.abs(-90 - obsMean);
+                    //dbprint("not in fingerprint: ")
+                }
+            }
+        }
+        //dbprint(obs_stats)
+        //dbprint(score)
+        //dbprint(weighting)
+        return score/weighting;
+
     }
 
 

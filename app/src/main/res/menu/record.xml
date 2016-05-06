@@ -11,12 +11,18 @@
         android:showAsAction="never" />
 
     <item android:id="@+id/menu_locate"
-        android:title="Locate"
+        android:title="Locate Mode"
         android:showAsAction="ifRoom" />
+
+    <item android:id="@+id/menu_record"
+        android:title="Record Mode"
+        android:showAsAction="ifRoom"
+        android:enabled="false"/>
 
     <item android:id="@+id/menu_manual_record"
         android:title="Manual"
-        android:showAsAction="ifRoom" />
+        android:showAsAction="never"
+    />
 
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"

@@ -32,7 +32,8 @@ public class RecordActivity extends Activity
 
     private static final String TAG = "WIFI";
     public static String sessionStartTime = null;
-    private PopupMenuDialogFragment menu;
+    private PopupMenuDialogFragment popupMenu;
+    private Menu optionsMenu;
     private ScrollImageView floorMapView;
     private Map<String, FloorPlanImageList> floorplans = new HashMap<String, FloorPlanImageList>();
     static final String RO_RECORD = "Record Wifi at this Point";
@@ -44,33 +45,12 @@ public class RecordActivity extends Activity
     private static WifiStrengthRecorder wifiRecorder;
     private PreviousRecordings levelsAndPoints;
     private ReadingSummaryList summaryList;
+    private RecordForLocation locator;
+    private int currentLevelID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        if (sessionStartTime==null) {
-            Calendar c = Calendar.getInstance();
-            sessionStartTime = DataReadWrite.timeStampFormat.format(c.getTime());
-        }
-
-        currentPlan = "Home";
-        currentLevel = "Upstairs";
-        wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-
-        if (wifiRecorder == null) {
-            wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
-        }
-        else {
-            wifiRecorder.SetActivity(this);
-        }
-
-
-        if (savedInstanceState!=null) {
-            currentPlan = savedInstanceState.getString("currentPlan");
-            currentLevel = savedInstanceState.getString("currentLevel");
-        }
-
         floorplans.put("Greenstone", new FloorPlanImageList());
         floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
         floorplans.get("Greenstone").add(1, "Upper Level", R.drawable.greenstone_upper);
@@ -79,10 +59,30 @@ public class RecordActivity extends Activity
         floorplans.get("Home").add(0, "Downstairs", R.drawable.house_lower);
         floorplans.get("Home").add(1, "Upstairs", R.drawable.house_upper);
 
+        currentPlan = "Home";
+        currentLevel = "Upstairs";
+        if (savedInstanceState!=null) {
+            currentPlan = savedInstanceState.getString("currentPlan");
+            currentLevel = savedInstanceState.getString("currentLevel");
+        }
+        currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+
+        if (sessionStartTime==null) {
+            Calendar c = Calendar.getInstance();
+            sessionStartTime = DataReadWrite.timeStampFormat.format(c.getTime());
+        }
+        wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        if (wifiRecorder == null) {
+            wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
+        }
+        else {
+            wifiRecorder.SetActivity(this);
+        }
+
         setContentView(R.layout.activity_record);
         LinearLayout myLayout = (LinearLayout)findViewById(R.id.recordLayout);
 
-        floorMapView = new ScrollImageView(this, this);
+        floorMapView = new ScrollImageView(this, this, ScrollImageView.ViewMode.RECORD);
 
         floorMapView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -98,7 +98,7 @@ public class RecordActivity extends Activity
         }
         levelsAndPoints = new PreviousRecordings(currentPlan);
         summaryList = new ReadingSummaryList(currentPlan);
-        Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
+
         floorMapView.SetPreviousPoints(
                     levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
                     summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
@@ -119,14 +119,30 @@ public class RecordActivity extends Activity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
+        // Inflate the popupMenu; this adds items to the action bar if it is present.
+        optionsMenu = menu;
         getMenuInflater().inflate(R.menu.record, menu);
         return true;
     }
 
-    public void UpdateScanProgress(String newText) {
-        floorMapView.UpdateScanProgress(newText);
+    public void UpdateRecordProgress(String newText) {
+        floorMapView.UpdateRecordProgress(newText);
     }
+
+    /**
+     *
+     * @return the id number of the current level
+     */
+    public int GetLevelID(){return currentLevelID;}
+
+    /**
+     * For use by the locator to run on the UI thread.
+     * @param scores
+     */
+    public void UpdateLocateProgress(List<String> scores) {
+        floorMapView.UpdateLocateProgress(scores);
+    }
+
     public void SetScanFinished() {
         floorMapView.SetScanFinished();
     }
@@ -160,7 +176,7 @@ public class RecordActivity extends Activity
 
 
     /**
-     * Item selected in main action bar menu
+     * Item selected in main action bar popupMenu
      *
      * @param item
      * @return
@@ -171,20 +187,38 @@ public class RecordActivity extends Activity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
+            case R.id.menu_locate: {
+                // Start the locating thread
+                optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
+                optionsMenu.findItem(R.id.menu_record).setEnabled(true);
+                floorMapView.SetViewMode(ScrollImageView.ViewMode.LOCATE);
+                locator = new RecordForLocation(currentPlan, summaryList, this, wifiManager);
+                locator.Start();
+                return true;
+            }
+            case R.id.menu_record: {
+                // Start the locating thread
+                locator.Stop();
+                optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
+                optionsMenu.findItem(R.id.menu_record).setEnabled(false);
+                floorMapView.SetViewMode(ScrollImageView.ViewMode.RECORD);
+                return true;
+            }
             case R.id.action_settings: {
                 Intent intent = new Intent(this, SettingsActivity.class);
                 startActivity(intent);
                 return true;
             }
             case R.id.menu_select_location: {
+                // TODO: Mustn't change location while locator is running.
                 View view = findViewById(R.id.recordLayout);
-                menu = new PopupMenuDialogFragment();
+                popupMenu = new PopupMenuDialogFragment();
                 Bundle options = new Bundle();
                 options.putStringArrayList("options", new ArrayList<String>(floorplans.keySet()));
                 options.putString("type", "location");
-                menu.setArguments(options);
-                menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-                menu.show(getFragmentManager(), "menu");
+                popupMenu.setArguments(options);
+                popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
+                popupMenu.show(getFragmentManager(), "menu");
                 return true;
             }
             case R.id.menu_manual_record: {
@@ -194,13 +228,13 @@ public class RecordActivity extends Activity
             }
             case R.id.menu_select_level: {
                 View view = findViewById(R.id.recordLayout);
-                menu = new PopupMenuDialogFragment();
+                popupMenu = new PopupMenuDialogFragment();
                 Bundle options = new Bundle();
                 options.putStringArrayList("options", floorplans.get(currentPlan).descriptions);
                 options.putString("type", "level");
-                menu.setArguments(options);
-                menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-                menu.show(getFragmentManager(), "menu");
+                popupMenu.setArguments(options);
+                popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
+                popupMenu.show(getFragmentManager(), "menu");
                 return true;
             }
             default:
@@ -234,32 +268,30 @@ public class RecordActivity extends Activity
                     // TODO: If this ends up being slow do it on another thread.
                     levelsAndPoints = new PreviousRecordings(currentPlan);
                     summaryList = new ReadingSummaryList(currentPlan);
-                    Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
                     floorMapView.SetPreviousPoints(
                             levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
                             summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
                     wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
                     floorMapView.invalidate();
                 }
-                menu.dismiss();
+                popupMenu.dismiss();
                 return;
             case "level":
                 if (!currentLevel.equals(results.getString("value"))) {
                     currentLevel = results.getString("value");
+                    currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
                     UpdateFloorplan();
-                    Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
                     floorMapView.SetPreviousPoints(
                             levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
                             summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
                     floorMapView.invalidate();
                 }
-                menu.dismiss();
+                popupMenu.dismiss();
                 return;
             case "record":
                 String value = results.getString("value");
                 switch (value) {
                     case RO_RECORD:
-                        Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
                         makeRecording(results.getFloat("x"), results.getFloat("y"), currentLevelID, 500);
                         break;
                     case RO_DELETE:
@@ -268,7 +300,7 @@ public class RecordActivity extends Activity
                     default:
                         throw new IllegalArgumentException("Not a known menu option: " + value);
                 }
-                menu.dismiss();
+                popupMenu.dismiss();
                 return;
 
         }
@@ -276,7 +308,7 @@ public class RecordActivity extends Activity
 
 
     /**
-     * Make a menu at the location of a second click on the floormap view, asking the user if they
+     * Make a popupMenu at the location of a second click on the floormap view, asking the user if they
      * want to make a wifi recfording there or remove the point.
      *
      * @param x actual pixel location of click event.  Not device independent version.
@@ -284,15 +316,15 @@ public class RecordActivity extends Activity
      */
     @Override
     public void MakeRecordMenu(float x, float y) {
-        menu = new PopupMenuDialogFragment();
+        popupMenu = new PopupMenuDialogFragment();
         Bundle bundle = new Bundle();
         bundle.putStringArrayList("options", recordOptions);
         bundle.putString("type", "record");
         bundle.putFloat("x", x);
         bundle.putFloat("y", y);
-        menu.setArguments(bundle);
-        menu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-        menu.show(getFragmentManager(), "menu");
+        popupMenu.setArguments(bundle);
+        popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
+        popupMenu.show(getFragmentManager(), "menu");
     }
 
     @Override
