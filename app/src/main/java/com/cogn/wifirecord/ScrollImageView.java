@@ -274,21 +274,26 @@ public class ScrollImageView extends View {
         if (mImage == null) {
             return;
         }
+        // Repair for any shifting that may have happened on a rotate
+        if (mTotalX >= mPadding)
+            mTotalX = mPadding-1;
+        if (mTotalX <= getMeasuredWidth() - mImage.getWidth() - mPadding)
+            mTotalX = getMeasuredWidth() - mImage.getWidth() - mPadding + 1;
+        if (mTotalY >= mPadding)
+            mTotalY = mPadding-1;
+        if (mTotalY <= getMeasuredHeight() - mImage.getHeight() - mPadding)
+            mTotalY = getMeasuredHeight() - mImage.getHeight() - mPadding + 1;
+
 
         float newTotalX = mTotalX + mDeltaX;
         // Don't scroll off the left or right edges of the bitmap.
         if (mPadding > newTotalX && newTotalX > getMeasuredWidth() - mImage.getWidth() - mPadding)
             mTotalX += mDeltaX;
-        else
-            mTotalX = Math.max(mTotalX, getMeasuredWidth() - mImage.getWidth() - mPadding);
 
         float newTotalY = mTotalY + mDeltaY;
         // Don't scroll off the top or bottom edges of the bitmap.
         if (mPadding > newTotalY && newTotalY > getMeasuredHeight() - mImage.getHeight() - mPadding)
             mTotalY += mDeltaY;
-        else
-            mTotalY = Math.max(mTotalY, getMeasuredHeight() - mImage.getHeight() - mPadding);
-
 
         canvas.drawBitmap(mImage, mTotalX, mTotalY, new Paint());
 
