@@ -199,8 +199,8 @@ public class ScrollImageView extends View {
             float imageX = mCurrentX-mTotalX;
             float imageY = mCurrentY-mTotalY;
             // If there are no circles and there is a click add a cicle
-            // If there is a circle and the click is near to it tell the activity to make a menut
-            // If there is a circle but the click is not near it, do nothing
+            // If there is a circle and the click is near to it tell the activity to make a menu
+            // If there is a circle but the click is not near it, replace the latest circle
             if(clickDuration < 200) {
                 //click event has occurred
                 boolean addCircle = true;
@@ -208,6 +208,10 @@ public class ScrollImageView extends View {
                     float dist = sqrt(FloatMath.pow(latestCircleX - imageX, 2) + FloatMath.pow(latestCircleY - imageY, 2));
                     if (dist < 50.0) {
                         recordMenuMaker.MakeRecordMenu(latestCircleX/density, latestCircleY/density);
+                    }
+                    else {
+                        latestCircleX = imageX;
+                        latestCircleY = imageY;
                     }
                 }
                 else {
@@ -370,6 +374,8 @@ public class ScrollImageView extends View {
         }
         state.putFloatArray("thisSessionRecordedX", ListToArray(thisSessionRecordedX));
         state.putFloatArray("thisSessionRecordedY", ListToArray(thisSessionRecordedY));
+        state.putFloatArray("summaryRecordedX", ListToArray(summaryRecordedX));
+        state.putFloatArray("summaryRecordedY", ListToArray(summaryRecordedY));
         state.putFloat("mTotalX", mTotalX);
         state.putFloat("mTotalY", mTotalY);
 
@@ -387,6 +393,8 @@ public class ScrollImageView extends View {
         }
         thisSessionRecordedX = ArrayToList(state.getFloatArray("thisSessionRecordedX"));
         thisSessionRecordedY = ArrayToList(state.getFloatArray("thisSessionRecordedY"));
+        summaryRecordedX = ArrayToList(state.getFloatArray("summaryRecordedX"));
+        summaryRecordedY = ArrayToList(state.getFloatArray("summaryRecordedY"));
         // The following does not seem to work since the meaasured width is not known when this is
         // called.  Fixed it in the actual scroll code.
         mTotalX = Math.max(getMeasuredWidth() - mImage.getWidth() - mPadding, state.getFloat("mTotalX"));

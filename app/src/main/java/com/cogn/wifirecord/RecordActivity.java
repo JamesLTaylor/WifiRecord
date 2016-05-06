@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 
-
 public class RecordActivity extends Activity
     implements PopupMenuDialogFragment.OptionSetListener,
         ScrollImageView.RecordMenuMaker,
@@ -43,7 +42,8 @@ public class RecordActivity extends Activity
     private String currentLevel;
     private WifiManager wifiManager;
     private static WifiStrengthRecorder wifiRecorder;
-    private Map<Integer, PreviousRecordings.ListPair> levelsAndPoints;
+    private PreviousRecordings levelsAndPoints;
+    private ReadingSummaryList summaryList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,12 +96,13 @@ public class RecordActivity extends Activity
             Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
             floorMapView.SetState(floorMapViewState);
         }
-        levelsAndPoints = PreviousRecordings.GetPreviousRecordings(currentPlan);
+        levelsAndPoints = new PreviousRecordings(currentPlan);
+        summaryList = new ReadingSummaryList(currentPlan);
         Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
-        if (levelsAndPoints.containsKey(currentLevelID)) {
-            floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
-                    levelsAndPoints.get(currentLevelID).yList, null, null);
-        }
+        floorMapView.SetPreviousPoints(
+                    levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
+                    summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
+
     }
 
     @Override
@@ -231,12 +232,12 @@ public class RecordActivity extends Activity
                     UpdateFloorplan();
                     // read the files that store previous points
                     // TODO: If this ends up being slow do it on another thread.
-                    levelsAndPoints = PreviousRecordings.GetPreviousRecordings(currentPlan);
+                    levelsAndPoints = new PreviousRecordings(currentPlan);
+                    summaryList = new ReadingSummaryList(currentPlan);
                     Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
-                    if (levelsAndPoints.containsKey(currentLevelID)) {
-                        floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
-                                levelsAndPoints.get(currentLevelID).yList, null, null);
-                    }
+                    floorMapView.SetPreviousPoints(
+                            levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
+                            summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
                     wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
                     floorMapView.invalidate();
                 }
@@ -247,10 +248,9 @@ public class RecordActivity extends Activity
                     currentLevel = results.getString("value");
                     UpdateFloorplan();
                     Integer currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
-                    if (levelsAndPoints.containsKey(currentLevelID)) {
-                        floorMapView.SetPreviousPoints(levelsAndPoints.get(currentLevelID).xList,
-                                levelsAndPoints.get(currentLevelID).yList, null, null);
-                    }
+                    floorMapView.SetPreviousPoints(
+                            levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
+                            summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
                     floorMapView.invalidate();
                 }
                 menu.dismiss();
