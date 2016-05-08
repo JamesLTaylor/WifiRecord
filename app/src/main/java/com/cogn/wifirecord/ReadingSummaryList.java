@@ -15,10 +15,10 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Created by James on 5/6/2016.
+ * A list of averages readings at various locations.
  */
 public class ReadingSummaryList {
-    private List<ReadingSummary> summaryList;
+    public List<ReadingSummary> summaryList;
 
     /**
      * Open a file and read the contents into a new ReadingSummaryList
@@ -107,16 +107,40 @@ public class ReadingSummaryList {
         return fileToUse;
     }
 
-    public List<String> GetScores(HashMap<Integer, List<Float>> testSummary, int levelID) {
+    /**
+     * Sets the scores for the test summary comapered with each of the points in the list.
+     * @param testSummary Map of macId int with a list of [p, mu, sigma] for the observations
+     */
+    public void UpdateScores(HashMap<Integer, List<Float>> testSummary)
+    {
+        for (ReadingSummary summary : summaryList) {
+            summary.score = GetScore(summary.stats, testSummary);
+        }
+    }
+
+    /**
+     * The scores for the latest observation compared with stored locations on this level.
+     * @param levelID only gets strings for currently displayed level
+     * @return a list strings representing the scores of each the observation comapared to each location.
+     */
+    public ScoresAndBest GetScores(int levelID) {
         List<String> scores = new ArrayList<>();
+        float maxScore = -1e9f;
         float score;
+        float minX = 0;
+        float minY = 0;
         for (ReadingSummary summary : summaryList) {
             if (summary.level==levelID) {
-                score = GetScore(summary.stats, testSummary);
+                score = summary.score;
+                if (score>maxScore){
+                    maxScore = score;
+                }
                 scores.add(String.format(Locale.US, "%.1f", score));
             }
         }
-        return scores;
+        ScoresAndBest result = new ScoresAndBest();
+        result.scores = scores;
+        return result;
     }
 
 
@@ -131,16 +155,13 @@ public class ReadingSummaryList {
             weighting += recordedEntry.getValue().get(0);
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
-                score -= w1 * Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1)) * weighting;
-                //dbprint("in both: ")
-                //dbprint(loc_stats)
-                //dbprint(obs[loc_mac_key])
+                float d = Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1));
+                d = Math.max(0, d-2);
+                score -= w1 * d * weighting;
             } else {
                 // in fingerprint but not in obs
                 if (recordedMean > -90) {
                     score -= w2 * weighting * Math.abs(-90 - recordedMean);
-                    //dbprint("not in obs: ")
-                    //dbprint(loc_stats)
                 }
             }
         }
@@ -151,23 +172,34 @@ public class ReadingSummaryList {
                 float obsMean = obsEntry.getValue().get(1);
                 if (obsMean > -90) {
                     score -= w3 * obsP * Math.abs(-90 - obsMean);
-                    //dbprint("not in fingerprint: ")
                 }
             }
         }
-        //dbprint(obs_stats)
-        //dbprint(score)
-        //dbprint(weighting)
         return score/weighting;
 
     }
 
+    /**
+     * Container to store the all the scores as well as the location of the best fit
+     */
+    public class ScoresAndBest {
+        public float x;
+        public float y;
+        public List<String> scores;
 
-    private class ReadingSummary{
+        public ScoresAndBest(){}
+    }
+
+
+    /**
+     * The average of readings at a single point.
+     */
+    public class ReadingSummary{
         public float x;
         public float y;
         public int level;
         public Map<Integer, List<Float>> stats;
+        public float score;
 
         public ReadingSummary(float x, float y, int level)
         {

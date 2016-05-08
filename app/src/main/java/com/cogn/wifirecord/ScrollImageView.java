@@ -56,6 +56,9 @@ public class ScrollImageView extends View {
     private List<Float> summaryRecordedY = new ArrayList<>();
     private List<String> summaryScores = new ArrayList<>();
     private Paint summaryRecordedPaint;
+    private Float bestGuessX = null;
+    private Float bestGuessY = null;
+    private Paint bestGuessPaint;
 
     private String scanProgress = null;
     private Paint textPaint;
@@ -77,9 +80,8 @@ public class ScrollImageView extends View {
     }
 
 
-    public ScrollImageView(Context context, RecordMenuMaker recordMenuMaker, ViewMode viewMode) {
+    public ScrollImageView(Context context, RecordMenuMaker recordMenuMaker) {
         super(context);
-        this.viewMode = viewMode;
         this.recordMenuMaker = recordMenuMaker;
         initScrollImageView(context);
     }
@@ -119,6 +121,14 @@ public class ScrollImageView extends View {
         textPaint.setColor(Color.BLACK);
         textPaint.setTextSize(16);
         textPaint.setFakeBoldText(true);
+
+        bestGuessPaint = new Paint();
+        bestGuessPaint.setColor(Color.GREEN);
+        bestGuessPaint.setStrokeWidth(2);
+        bestGuessPaint.setStyle(Paint.Style.FILL);
+        bestGuessPaint.setAlpha(100);
+        bestGuessPaint.setAntiAlias(true);
+
     }
 
     public Bitmap getImage() {
@@ -146,6 +156,15 @@ public class ScrollImageView extends View {
 
     }
 
+    private List<Float> MultiplyByDensity(List<Float> newValues){
+        if (newValues==null) return null;
+        List<Float> result = new ArrayList<>(newValues.size());
+        for (int i = 0; i<newValues.size(); i++) {
+            result.add(i, newValues.get(i)*density);
+        }
+        return result;
+    }
+
     /**
      * Sets the points that have already been recorded on the current floorplan
      *
@@ -158,10 +177,10 @@ public class ScrollImageView extends View {
                              List<Float> previousSessionRecordedY,
                              List<Float> summaryRecordedX,
                              List<Float> summaryRecordedY) {
-        this.previousSessionRecordedX = previousSessionRecordedX;
-        this.previousSessionRecordedY = previousSessionRecordedY;
-        this.summaryRecordedX = summaryRecordedX;
-        this.summaryRecordedY = summaryRecordedY;
+        this.previousSessionRecordedX = MultiplyByDensity(previousSessionRecordedX);
+        this.previousSessionRecordedY = MultiplyByDensity(previousSessionRecordedY);
+        this.summaryRecordedX = MultiplyByDensity(summaryRecordedX);
+        this.summaryRecordedY = MultiplyByDensity(summaryRecordedY);
     }
 
     /**
@@ -359,15 +378,20 @@ public class ScrollImageView extends View {
                 canvas.drawText(scanProgress, latestCircleX + mTotalX, latestCircleY + mTotalY, textPaint);
             }
         } else if (viewMode==ViewMode.LOCATE) {
+            // Points with summaries
+            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
+            if (bestGuessX != null && bestGuessY != null) {
+                canvas.drawCircle(bestGuessX + mTotalX, bestGuessY + mTotalY, 40 * density, bestGuessPaint);
+            }
+
             Iterator<Float> xIter = summaryRecordedX.iterator();
             Iterator<Float> yIter = summaryRecordedY.iterator();
             Iterator<String> scoreIter = summaryScores.iterator();
 
-            // Points with summaries
-            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
-            while (xIter.hasNext() && yIter.hasNext()) {
+            while (xIter.hasNext() && yIter.hasNext() && scoreIter.hasNext()) {
                 canvas.drawText(scoreIter.next(), xIter.next() + mTotalX, yIter.next() + mTotalY, textPaint);
             }
+
         }
     }
 
@@ -422,6 +446,7 @@ public class ScrollImageView extends View {
         state.putFloatArray("summaryRecordedY", ListToArray(summaryRecordedY));
         state.putFloat("mTotalX", mTotalX);
         state.putFloat("mTotalY", mTotalY);
+        state.putSerializable("viewMode", viewMode);
 
         return state;
     }
@@ -439,10 +464,9 @@ public class ScrollImageView extends View {
         thisSessionRecordedY = ArrayToList(state.getFloatArray("thisSessionRecordedY"));
         summaryRecordedX = ArrayToList(state.getFloatArray("summaryRecordedX"));
         summaryRecordedY = ArrayToList(state.getFloatArray("summaryRecordedY"));
-        // The following does not seem to work since the meaasured width is not known when this is
-        // called.  Fixed it in the actual scroll code.
-        mTotalX = Math.max(getMeasuredWidth() - mImage.getWidth() - mPadding, state.getFloat("mTotalX"));
-        mTotalY = Math.max(getMeasuredHeight() - mImage.getHeight() - mPadding, state.getFloat("mTotalY"));
+        mTotalX = state.getFloat("mTotalX");
+        mTotalY = state.getFloat("mTotalY");
+        viewMode = (ViewMode)state.getSerializable("viewMode");
     }
 
     /**
@@ -458,9 +482,13 @@ public class ScrollImageView extends View {
      *
      * @param summaryScores the scores for the current level.  The list must be exactly the same
      *                      length as the x and y lists.
+     * @param bestGuessX
+     * @param bestGuessY
      */
-    public void UpdateLocateProgress(List<String> summaryScores) {
+    public void UpdateLocateProgress(List<String> summaryScores, float bestGuessX, float bestGuessY) {
         this.summaryScores = summaryScores;
+        this.bestGuessX = bestGuessX*density;
+        this.bestGuessY = bestGuessY*density;
         invalidate();
     }
 

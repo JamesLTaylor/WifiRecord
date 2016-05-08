@@ -1,7 +1,12 @@
 package com.cogn.wifirecord;
 
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.util.FloatMath;
 import android.util.Log;
 
 import java.util.ArrayDeque;
@@ -13,16 +18,43 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by James on 5/6/2016.
+ * Class to estimate location of user based on Wifi readings.
  */
-public class RecordForLocation {
+public class RecordForLocation implements SensorEventListener {
     private static final String TAG = "WIFI_LOCATE";
     private final String location;
     private final ReadingSummaryList summaryList;
     private RecordActivity callingActivity;
     private WifiManager wifiManager;
     private MacLookup macLookup;
-    boolean scanRunning = false;
+    private boolean scanRunning = false;
+    private long delayMS = 100;
+
+    //For motion sensor
+    private float[] mGravity;
+    private float mAccel;
+    private float mAccelCurrent;
+    private float mAccelLast;
+    private boolean resetSinceMoveQueue;
+
+    //For location
+    private long offset;
+    private float currentX; // where the circle is currently drawn
+    private float currentY;
+    private float bestFitX; // the current best guess place
+    private float bestFitY;
+    private int bestFitLevel;
+    private int bestFitIndex;
+    private ReadingsQueue m_shortQueue;
+    private ReadingsQueue m_sinceMoveQueue;
+
+    // Values for drifting circle
+    private float pxPerSec = 30.0f;
+    private float pxPerDelay = pxPerSec * delayMS/1000;
+    private long prevTime = 0;
+    private float dx = 0;
+    private float dy = 0;
+
 
     public RecordForLocation(String location, ReadingSummaryList summaryList,
                              RecordActivity callingActivity, WifiManager wifiManager) {
@@ -31,7 +63,12 @@ public class RecordForLocation {
         this.callingActivity = callingActivity;
         this.wifiManager = wifiManager;
         macLookup = new MacLookup(location);
+        mAccel = 0.00f;
+        mAccelCurrent = SensorManager.GRAVITY_EARTH;
+        mAccelLast = SensorManager.GRAVITY_EARTH;
     }
+
+
 
 
     public void Stop() {
@@ -50,34 +87,89 @@ public class RecordForLocation {
         return false;
     }
 
+    private void UpdateMarkedLocation(boolean checkDirection)
+    {
+        if (prevTime==0){
+            prevTime = offset;
+            currentX = bestFitX;
+            currentY = bestFitY;
+            return;
+        }
+        if (checkDirection) {
+            if (Math.abs(bestFitX -currentX)<pxPerDelay/2 && Math.abs(bestFitY -currentY)<pxPerDelay/2) {
+                currentX = bestFitX;
+                currentY = bestFitY;
+                dx = 0;
+                dy = 0;
+            } else {
+                double theta = Math.atan((bestFitY -currentY)/(bestFitX -currentX));
+                if ((bestFitX -currentX)<0) theta+= Math.PI;
+                //TODO: check if I need to handle theta = +-pi/2
+                dx = pxPerDelay*(float)Math.cos(theta);
+                dy = pxPerDelay*(float)Math.sin(theta);
+            }
+        } else {
+            if (Math.abs(bestFitX - currentX) < pxPerDelay / 2 && Math.abs(bestFitY - currentY) < pxPerDelay / 2) {
+                currentX = bestFitX;
+                currentY = bestFitY;
+                dx = 0;
+                dy = 0;
+            } else {
+                currentX += dx;
+                currentY += dy;
+            }
+        }
+    }
+
+
+
     public void StartScanning(){
+        resetSinceMoveQueue = false;
         ArrayList<Integer> oldScanned = null;
         List<ScanResult> scanned;
         long startTimeMillis = Calendar.getInstance().getTimeInMillis();
-        RecentScanQueue recentScans = new RecentScanQueue(startTimeMillis);
-
-        long offset;
+        m_shortQueue = new ReadingsQueue(3);
+        m_sinceMoveQueue = new ReadingsQueue(20);
         int macID;
+        List<String> scores = null;
+        bestFitIndex = -1;
+
         while (scanRunning){
-            //UpdateProgressOnUIThread("" + (counter+1) + " of " + N);
             scanned = wifiManager.getScanResults();
             if (HaveChanged(oldScanned, scanned)) {
                 offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
-                recentScans.AddNew(offset);
+
+                // Add the scan to the Queues
+                m_shortQueue.AddNew(offset);
+                if (resetSinceMoveQueue) {
+                    m_sinceMoveQueue.clear();
+                    resetSinceMoveQueue = false;
+                    Log.d(TAG, "Reset sinceMoveQueue");
+                }
+                m_sinceMoveQueue.AddNew(offset);
                 Log.d(TAG, "OFFSET," + offset+"\n");
                 oldScanned = new ArrayList<Integer>();
                 for (ScanResult scan : scanned) {
                     macID = macLookup.GetId(scan.BSSID, scan.SSID);
                     Log.d(TAG, macID + "," + scan.level+"\n");
-                    recentScans.UpdateEnd(macID, (float)scan.level);
+                    m_shortQueue.UpdateEnd(macID, (float)scan.level);
+                    m_sinceMoveQueue.UpdateEnd(macID, (float)scan.level);
                     oldScanned.add(scan.level);
                 }
-                HashMap<Integer, List<Float>> summary = recentScans.GetSummary();
-                int levelID = callingActivity.GetLevelID();
-                List<String> scores = summaryList.GetScores(summary, levelID);
-                UpdateOnUIThread(scores);
+
+                // Find the best fit location, sets bestFitX and bestFitY
+                UpdateBestFit();
+                // Check which direction the bestGuess should move
+                UpdateMarkedLocation(true);
+                // Get the scores to display on the floorMap
+                scores = summaryList.GetScores(callingActivity.GetLevelID()).scores;
+            } else {
+                UpdateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
-            try { Thread.sleep(100); }
+
+            if (scores!=null) UpdateOnUIThread(scores, currentX, currentY);
+
+            try { Thread.sleep(delayMS); }
             catch (InterruptedException e) {
                 e.printStackTrace();
                 scanRunning = false;
@@ -86,12 +178,104 @@ public class RecordForLocation {
         }
     }
 
-    private void UpdateOnUIThread(final List<String> scores)
+    private void UpdateBestFit() {
+        float thresh1 = -7; // The minimum score that must be achieved before a short queue result is accepted
+        float thresh2 = 2; // The amount by which the new score must be better than the last
+
+        // device has not been moving.  Use the long queue.  Should be more accurate
+        if (m_sinceMoveQueue.size()>5) {
+            UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue", thresh1, thresh2);
+        }
+        // device has moved, use the short queue
+        else {
+            UpdateBestFitFromQueue(m_shortQueue, "m_shortQueue", thresh1, thresh2);
+        }
+    }
+
+    /**
+     * Only if score is good enough in absolute sense and offers a big enough improvement over the previous location
+     * @param queue which queue to use in makeing the summary.  shortQueue of recent recordings or long one since last move.
+     * @param description log which queue is being used
+     * @param thresh1 absolute min score
+     * @param thresh2 amount by which score must improve
+     */
+    private void UpdateBestFitFromQueue(ReadingsQueue queue, String description, float thresh1, float thresh2){
+        HashMap<Integer, List<Float>> observationSummary;
+        ReadingSummaryList.ReadingSummary locationSummary;
+
+        // Find the best fit
+        observationSummary = queue.GetSummary();
+        summaryList.UpdateScores(observationSummary);
+        int maxIndex = -1;
+        float maxScore = -1e9f;
+        for (int i = 0; i<summaryList.summaryList.size(); i++) {
+            locationSummary = summaryList.summaryList.get(i);
+            if (locationSummary.score>maxScore){
+                maxIndex = i;
+                maxScore = locationSummary.score;
+            }
+        }
+        // Decide if the best fit is good enough to use
+
+        // No location is recorded yet
+        if (bestFitIndex < 0) {
+            if (maxScore>thresh1) {
+                if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
+                    Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
+                    bestFitLevel = summaryList.summaryList.get(maxIndex).level;
+                    SetLevelOnUIThread(bestFitLevel);
+                }
+                bestFitX = summaryList.summaryList.get(maxIndex).x;
+                bestFitY = summaryList.summaryList.get(maxIndex).y;
+                bestFitIndex = maxIndex;
+                Log.d(TAG, description + " used for first time");
+            }
+            else {
+                Log.d(TAG, description + " not used because score is not good enough");
+            }
+        }
+        else {
+            if (maxScore>thresh1) {
+                if (summaryList.summaryList.get(maxIndex).score > summaryList.summaryList.get(bestFitIndex).score + thresh2) {
+                    if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
+                        Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
+                        bestFitLevel = summaryList.summaryList.get(maxIndex).level;
+                        SetLevelOnUIThread(bestFitLevel);
+                    }
+                    bestFitX = summaryList.summaryList.get(maxIndex).x;
+                    bestFitY = summaryList.summaryList.get(maxIndex).y;
+                    bestFitIndex = maxIndex;
+                    Log.d(TAG, description + " used - good enough score and improvement");
+                } else {
+                    Log.d(TAG, description + " not used because it does not offer a big enough improvement");
+                }
+            }
+            else {
+                Log.d(TAG, description + " not used because score is not good enough");
+            }
+        }
+    }
+
+    /**
+     * Set the image to display.  Called when best fit level is different from currently displayed.
+     * Only use this if there has been a change.
+     * @param bestFitLevel - value of floor level.
+     */
+    private void SetLevelOnUIThread(final int bestFitLevel) {
+        callingActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                callingActivity.SetLevel(bestFitLevel);
+            }
+        });
+    }
+
+    private void UpdateOnUIThread(final List<String> scores, final float bestGuessX, final float bestGuessY)
     {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateLocateProgress(scores);
+                callingActivity.UpdateLocateProgress(scores, bestGuessX, bestGuessY);
             }
         });
     }
@@ -106,34 +290,40 @@ public class RecordForLocation {
         }).start();
     }
 
-    private class RecentScanQueue{
-        ArrayDeque<Long> times;
-        ArrayDeque<Map<Integer, Float>> values;
-        long latestTime;
-        long maxTime = 5000;
 
-        public RecentScanQueue(long latestTime)
+
+    private class ReadingsQueue{
+
+        ArrayDeque<Map<Integer, Float>> values;
+        int maxLength;
+
+        public ReadingsQueue(int maxLength)
         {
-            this.latestTime = latestTime;
-            times = new ArrayDeque<>();
+            this.maxLength = maxLength;
             values = new ArrayDeque<>();
+
         }
+
+        /**
+         * Returns the number of elements in this deque.
+         */
+        public int size(){ return values.size(); }
+
+        /**
+         * Clears the contents of the Queue
+         */
+        public void clear() { values.clear(); }
 
         /**
          * Adds a new empty record to the end of the queue and removes any records from the start
          * that are too far in the past.
-         * @param latestTime
+         * @param latestTime the time since recording started (in ms)
          */
         public void AddNew(long latestTime)
         {
-            this.latestTime = latestTime;
-            times.addLast(latestTime);
             values.addLast(new HashMap<Integer, Float>());
-            if (times.size()>0) {
-                while (times.peekFirst() < latestTime - maxTime) {
-                    times.removeFirst();
-                    values.removeFirst();
-                }
+            if (values.size()>maxLength) {
+                values.removeFirst();
             }
         }
 
@@ -188,5 +378,32 @@ public class RecordForLocation {
             }
             return summary;
         }
+    }
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            mGravity = event.values.clone();
+            // Shake detection
+            float x = mGravity[0];
+            float y = mGravity[1];
+            float z = mGravity[2];
+            mAccelLast = mAccelCurrent;
+            mAccelCurrent = FloatMath.sqrt(x * x + y * y + z * z);
+
+            float delta = mAccelCurrent - mAccelLast;
+            mAccel = mAccel * 0.9f + delta;
+            // Make this higher or lower according to how much
+            // motion you want to detect
+            if(mAccel > 0.5){
+                resetSinceMoveQueue = true;
+                Log.d(TAG, "movement logged after: " + offset + "ms : mAccel=" + mAccel);
+            }
+        }
+
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
     }
 }

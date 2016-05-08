@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -14,7 +16,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.LinearLayout;
 
 import java.util.ArrayList;
@@ -28,17 +29,17 @@ import java.util.Map;
 public class RecordActivity extends Activity
     implements PopupMenuDialogFragment.OptionSetListener,
         ScrollImageView.RecordMenuMaker,
-        SharedPreferences.OnSharedPreferenceChangeListener {
+        SharedPreferences.OnSharedPreferenceChangeListener  {
 
     private static final String TAG = "WIFI";
     public static String sessionStartTime = null;
     private PopupMenuDialogFragment popupMenu;
     private Menu optionsMenu;
     private ScrollImageView floorMapView;
-    private Map<String, FloorPlanImageList> floorplans = new HashMap<String, FloorPlanImageList>();
+    private Map<String, FloorPlanImageList> floorplans = new HashMap<>();
     static final String RO_RECORD = "Record Wifi at this Point";
     static final String RO_DELETE = "Delete this point";
-    private ArrayList<String> recordOptions = new ArrayList<String>(Arrays.asList(RO_RECORD, RO_DELETE));
+    private ArrayList<String> recordOptions = new ArrayList<>(Arrays.asList(RO_RECORD, RO_DELETE));
     private String currentPlan;
     private String currentLevel;
     private WifiManager wifiManager;
@@ -47,6 +48,12 @@ public class RecordActivity extends Activity
     private ReadingSummaryList summaryList;
     private RecordForLocation locator;
     private int currentLevelID;
+    private ScrollImageView.ViewMode viewMode;
+
+    // For movement detection
+    private SensorManager sensorMan;
+    private Sensor accelerometer;
+    private ScrollImageView.ViewMode savedViewModeToUse;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,18 +66,23 @@ public class RecordActivity extends Activity
         floorplans.get("Home").add(0, "Downstairs", R.drawable.house_lower);
         floorplans.get("Home").add(1, "Upstairs", R.drawable.house_upper);
 
+        // Defaults:
         currentPlan = "Home";
-        currentLevel = "Upstairs";
+        String levelDescriptionToUse = "Downstairs";
+        savedViewModeToUse = ScrollImageView.ViewMode.RECORD;
+
         if (savedInstanceState!=null) {
             currentPlan = savedInstanceState.getString("currentPlan");
-            currentLevel = savedInstanceState.getString("currentLevel");
+            levelDescriptionToUse = savedInstanceState.getString("currentLevel");
+            savedViewModeToUse = (ScrollImageView.ViewMode)savedInstanceState.getSerializable("viewMode");
         }
-        currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
 
         if (sessionStartTime==null) {
             Calendar c = Calendar.getInstance();
             sessionStartTime = DataReadWrite.timeStampFormat.format(c.getTime());
         }
+
+        // WIFI Manager
         wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
         if (wifiRecorder == null) {
             wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
@@ -78,42 +90,52 @@ public class RecordActivity extends Activity
         else {
             wifiRecorder.SetActivity(this);
         }
+        // Sensor manager
+        sensorMan = (SensorManager)getSystemService(SENSOR_SERVICE);
+        accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
+        //Add floormap view
         setContentView(R.layout.activity_record);
         LinearLayout myLayout = (LinearLayout)findViewById(R.id.recordLayout);
 
-        floorMapView = new ScrollImageView(this, this, ScrollImageView.ViewMode.RECORD);
+        floorMapView = new ScrollImageView(this, this);
 
         floorMapView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT));
 
-        UpdateFloorplan();
         myLayout.addView(floorMapView);
-
-        floorMapView.invalidate();
         if (savedInstanceState!=null) {
             Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
             floorMapView.SetState(floorMapViewState);
         }
         levelsAndPoints = new PreviousRecordings(currentPlan);
         summaryList = new ReadingSummaryList(currentPlan);
-
-        floorMapView.SetPreviousPoints(
-                    levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
-                    summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
-
+        SetLevel(levelDescriptionToUse);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        SetViewMode(savedViewModeToUse);
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
+        if (viewMode==ScrollImageView.ViewMode.LOCATE)
+        {
+            // TODO: use the old locator with history.
+            locator = new RecordForLocation(currentPlan, summaryList, this, wifiManager);
+            sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
+            locator.Start();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        if (viewMode==ScrollImageView.ViewMode.LOCATE)
+        {
+            sensorMan.unregisterListener(locator);
+            locator.Stop();
+        }
         PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
     }
 
@@ -122,6 +144,13 @@ public class RecordActivity extends Activity
         // Inflate the popupMenu; this adds items to the action bar if it is present.
         optionsMenu = menu;
         getMenuInflater().inflate(R.menu.record, menu);
+        if (viewMode == ScrollImageView.ViewMode.LOCATE) {
+            optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
+            optionsMenu.findItem(R.id.menu_record).setEnabled(true);
+        } else {
+            optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
+            optionsMenu.findItem(R.id.menu_record).setEnabled(false);
+        }
         return true;
     }
 
@@ -138,9 +167,11 @@ public class RecordActivity extends Activity
     /**
      * For use by the locator to run on the UI thread.
      * @param scores
+     * @param bestGuessX
+     * @param bestGuessY
      */
-    public void UpdateLocateProgress(List<String> scores) {
-        floorMapView.UpdateLocateProgress(scores);
+    public void UpdateLocateProgress(List<String> scores, float bestGuessX, float bestGuessY) {
+        floorMapView.UpdateLocateProgress(scores, bestGuessX, bestGuessY);
     }
 
     public void SetScanFinished() {
@@ -189,19 +220,17 @@ public class RecordActivity extends Activity
         switch (item.getItemId()) {
             case R.id.menu_locate: {
                 // Start the locating thread
-                optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
-                optionsMenu.findItem(R.id.menu_record).setEnabled(true);
-                floorMapView.SetViewMode(ScrollImageView.ViewMode.LOCATE);
+                SetViewMode(ScrollImageView.ViewMode.LOCATE);
                 locator = new RecordForLocation(currentPlan, summaryList, this, wifiManager);
+                sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
                 locator.Start();
                 return true;
             }
             case R.id.menu_record: {
                 // Start the locating thread
+                sensorMan.unregisterListener(locator);
                 locator.Stop();
-                optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
-                optionsMenu.findItem(R.id.menu_record).setEnabled(false);
-                floorMapView.SetViewMode(ScrollImageView.ViewMode.RECORD);
+                SetViewMode(ScrollImageView.ViewMode.RECORD);
                 return true;
             }
             case R.id.action_settings: {
@@ -211,10 +240,9 @@ public class RecordActivity extends Activity
             }
             case R.id.menu_select_location: {
                 // TODO: Mustn't change location while locator is running.
-                View view = findViewById(R.id.recordLayout);
                 popupMenu = new PopupMenuDialogFragment();
                 Bundle options = new Bundle();
-                options.putStringArrayList("options", new ArrayList<String>(floorplans.keySet()));
+                options.putStringArrayList("options", new ArrayList<>(floorplans.keySet()));
                 options.putString("type", "location");
                 popupMenu.setArguments(options);
                 popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
@@ -227,7 +255,6 @@ public class RecordActivity extends Activity
                 return true;
             }
             case R.id.menu_select_level: {
-                View view = findViewById(R.id.recordLayout);
                 popupMenu = new PopupMenuDialogFragment();
                 Bundle options = new Bundle();
                 options.putStringArrayList("options", floorplans.get(currentPlan).descriptions);
@@ -243,11 +270,54 @@ public class RecordActivity extends Activity
         }
     }
 
+    private void SetViewMode(ScrollImageView.ViewMode newMode){
+        //Only update the option menu if it has already been created.  Seems to happen after onResume which calls this method.
+        if (optionsMenu!=null) {
+            if (newMode == ScrollImageView.ViewMode.LOCATE) {
+                optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
+                optionsMenu.findItem(R.id.menu_record).setEnabled(true);
+            } else {
+                optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
+                optionsMenu.findItem(R.id.menu_record).setEnabled(false);
+            }
+        }
+        viewMode = newMode;
+        floorMapView.SetViewMode(viewMode);
+    }
+
+
+    /**
+     * Sets the image and dots etc.
+     * @param newLevelID
+     */
+    public void SetLevel(int newLevelID)
+    {
+        currentLevelID = newLevelID;
+        currentLevel = floorplans.get(currentPlan).DescriptionFromID(newLevelID);
+        UpdateFloorplan();
+
+        floorMapView.SetPreviousPoints(
+                levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
+                summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
+        floorMapView.invalidate();
+
+    }
+
+    /**
+     * Gets the id and calls  {@link #SetLevel(int) SetLevel}
+     * @param newLevelDescription
+     */
+    public void SetLevel(String newLevelDescription)
+    {
+        SetLevel(floorplans.get(currentPlan).IDFromDescription(newLevelDescription));
+    }
+
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString("currentPlan", currentPlan);
         outState.putString("currentLevel", currentLevel);
+        outState.putSerializable("viewMode", viewMode);
         outState.putBundle("floorMapViewState", floorMapView.GetState());
     }
 
@@ -262,29 +332,19 @@ public class RecordActivity extends Activity
             case "location":
                 if (!currentPlan.equals(results.getString("value"))) {
                     currentPlan = results.getString("value");
-                    currentLevel = floorplans.get(currentPlan).GetDefault();
-                    UpdateFloorplan();
+                    wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
+
                     // read the files that store previous points
                     // TODO: If this ends up being slow do it on another thread.
                     levelsAndPoints = new PreviousRecordings(currentPlan);
                     summaryList = new ReadingSummaryList(currentPlan);
-                    floorMapView.SetPreviousPoints(
-                            levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
-                            summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
-                    wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
-                    floorMapView.invalidate();
+                    SetLevel(floorplans.get(currentPlan).GetDefaultLevel());
                 }
                 popupMenu.dismiss();
                 return;
             case "level":
                 if (!currentLevel.equals(results.getString("value"))) {
-                    currentLevel = results.getString("value");
-                    currentLevelID = floorplans.get(currentPlan).IDFromDescription(currentLevel);
-                    UpdateFloorplan();
-                    floorMapView.SetPreviousPoints(
-                            levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
-                            summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
-                    floorMapView.invalidate();
+                    SetLevel(results.getString("value"));
                 }
                 popupMenu.dismiss();
                 return;
@@ -301,8 +361,6 @@ public class RecordActivity extends Activity
                         throw new IllegalArgumentException("Not a known menu option: " + value);
                 }
                 popupMenu.dismiss();
-                return;
-
         }
     }
 
@@ -338,13 +396,15 @@ public class RecordActivity extends Activity
     }
 
 
+
+
     /**
      * Keeps the floormaps indexed by the location name and then a number and description for the levels.
      */
     private class FloorPlanImageList{
-        private List<Integer> ids = new ArrayList<Integer>();
+        private List<Integer> ids = new ArrayList<>();
         public ArrayList<String> descriptions = new ArrayList<String>();
-        private List<Integer> resourceIDs = new ArrayList<Integer>();
+        private List<Integer> resourceIDs = new ArrayList<>();
         public FloorPlanImageList(){}
         public void add(int id, String description, int resourceID)
         {
@@ -374,7 +434,7 @@ public class RecordActivity extends Activity
             if (pos>=0) return resourceIDs.get(pos);
             else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
         }
-        public String GetDefault()
+        public String GetDefaultLevel()
         {
             return descriptions.get(0);
         }
