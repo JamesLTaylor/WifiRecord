@@ -180,7 +180,7 @@ public class RecordForLocation implements SensorEventListener {
 
     private void UpdateBestFit() {
         float thresh1 = -7; // The minimum score that must be achieved before a short queue result is accepted
-        float thresh2 = 2; // The amount by which the new score must be better than the last
+        float thresh2 = 1.5f; // The amount by which the new score must be better than the last
 
         // device has not been moving.  Use the long queue.  Should be more accurate
         if (m_sinceMoveQueue.size()>5) {

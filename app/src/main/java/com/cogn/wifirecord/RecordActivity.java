@@ -90,6 +90,7 @@ public class RecordActivity extends Activity
         else {
             wifiRecorder.SetActivity(this);
         }
+
         // Sensor manager
         sensorMan = (SensorManager)getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -231,6 +232,12 @@ public class RecordActivity extends Activity
                 sensorMan.unregisterListener(locator);
                 locator.Stop();
                 SetViewMode(ScrollImageView.ViewMode.RECORD);
+                return true;
+            }
+            case R.id.menu_continuous_record: {
+                Intent intent = new Intent(this, ContinuousRecordActivity.class);
+                intent.putExtra("location", currentPlan);
+                startActivity(intent);
                 return true;
             }
             case R.id.action_settings: {

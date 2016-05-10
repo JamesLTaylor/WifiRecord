@@ -19,6 +19,11 @@
         android:showAsAction="ifRoom"
         android:enabled="false"/>
 
+    <item android:id="@+id/menu_continuous_record"
+        android:title="Continuous Record"
+        android:showAsAction="never"
+        />
+
     <item android:id="@+id/menu_manual_record"
         android:title="Manual"
         android:showAsAction="never"
