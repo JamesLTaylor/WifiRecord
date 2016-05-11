@@ -42,7 +42,7 @@ public class ReadingSummaryList {
                 if (cols[0].equalsIgnoreCase("LOCATION")) {
                     float x = Float.parseFloat(cols[2]);
                     float y = Float.parseFloat(cols[3]);
-                    int level = Integer.parseInt(cols[1]);
+                    int level = (int)Float.parseFloat(cols[1]);
                     summary = new ReadingSummary(x, y, level);
                     summaryList.add(summary);
                 } else if (cols.length==4)  {
@@ -149,19 +149,20 @@ public class ReadingSummaryList {
         float w1 = 1;
         float w2 = 1;
         float w3 = 2;
-        float weighting = 0;
+        float totalWeighting = 0;
         for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
             float recordedMean = recordedEntry.getValue().get(1);
-            weighting += recordedEntry.getValue().get(0);
+            float p = recordedEntry.getValue().get(0);
+            totalWeighting += recordedEntry.getValue().get(0);
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
                 float d = Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1));
                 d = Math.max(0, d-2);
-                score -= w1 * d * weighting;
+                score -= w1 * d * p;
             } else {
                 // in fingerprint but not in obs
                 if (recordedMean > -90) {
-                    score -= w2 * weighting * Math.abs(-90 - recordedMean);
+                    score -= w2 * p * Math.abs(-90 - recordedMean);
                 }
             }
         }
@@ -175,7 +176,7 @@ public class ReadingSummaryList {
                 }
             }
         }
-        return score/weighting;
+        return score/totalWeighting;
 
     }
 

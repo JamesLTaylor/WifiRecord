@@ -45,6 +45,7 @@ public class RecordForLocation implements SensorEventListener {
     private float bestFitY;
     private int bestFitLevel;
     private int bestFitIndex;
+    private long bestFitTime;
     private ReadingsQueue m_shortQueue;
     private ReadingsQueue m_sinceMoveQueue;
 
@@ -179,7 +180,7 @@ public class RecordForLocation implements SensorEventListener {
     }
 
     private void UpdateBestFit() {
-        float thresh1 = -7; // The minimum score that must be achieved before a short queue result is accepted
+        float thresh1 = -100; // The minimum score that must be achieved before a short queue result is accepted
         float thresh2 = 1.5f; // The amount by which the new score must be better than the last
 
         // device has not been moving.  Use the long queue.  Should be more accurate
@@ -225,6 +226,7 @@ public class RecordForLocation implements SensorEventListener {
                     bestFitLevel = summaryList.summaryList.get(maxIndex).level;
                     SetLevelOnUIThread(bestFitLevel);
                 }
+                bestFitTime = offset;
                 bestFitX = summaryList.summaryList.get(maxIndex).x;
                 bestFitY = summaryList.summaryList.get(maxIndex).y;
                 bestFitIndex = maxIndex;
@@ -236,12 +238,13 @@ public class RecordForLocation implements SensorEventListener {
         }
         else {
             if (maxScore>thresh1) {
-                if (summaryList.summaryList.get(maxIndex).score > summaryList.summaryList.get(bestFitIndex).score + thresh2) {
+                if (maxScore > summaryList.summaryList.get(bestFitIndex).score + Math.max(0, thresh2 -(offset-bestFitTime)*0.0005)) {
                     if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
                         Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
                         bestFitLevel = summaryList.summaryList.get(maxIndex).level;
                         SetLevelOnUIThread(bestFitLevel);
                     }
+                    bestFitTime = offset;
                     bestFitX = summaryList.summaryList.get(maxIndex).x;
                     bestFitY = summaryList.summaryList.get(maxIndex).y;
                     bestFitIndex = maxIndex;
