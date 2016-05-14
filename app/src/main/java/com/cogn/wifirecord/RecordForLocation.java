@@ -27,6 +27,9 @@ public class RecordForLocation implements SensorEventListener {
     private RecordActivity callingActivity;
     private WifiManager wifiManager;
     private MacLookup macLookup;
+    private ConnectionPoints connectionPoints;
+    private int nearestConnectionIndex;
+    private float pxPerM;
     private boolean scanRunning = false;
     private long delayMS = 100;
 
@@ -50,16 +53,19 @@ public class RecordForLocation implements SensorEventListener {
     private ReadingsQueue m_sinceMoveQueue;
 
     // Values for drifting circle
-    private float pxPerSec = 30.0f;
-    private float pxPerDelay = pxPerSec * delayMS/1000;
     private long prevTime = 0;
     private float dx = 0;
     private float dy = 0;
+    private float walking_pace =  2.0f; // m/s FAST: 7.6km/h;
+    private float pxPerDelay;
 
-
-    public RecordForLocation(String location, ReadingSummaryList summaryList,
+    public RecordForLocation(String location, ConnectionPoints connectionPoints, float pxPerM,
+                             ReadingSummaryList summaryList,
                              RecordActivity callingActivity, WifiManager wifiManager) {
         this.location = location;
+        this.connectionPoints = connectionPoints;
+        this.pxPerM = pxPerM;
+        pxPerDelay = walking_pace*pxPerM * delayMS/1000;
         this.summaryList = summaryList;
         this.callingActivity = callingActivity;
         this.wifiManager = wifiManager;
@@ -69,12 +75,9 @@ public class RecordForLocation implements SensorEventListener {
         mAccelLast = SensorManager.GRAVITY_EARTH;
     }
 
-
-
-
     public void Stop() {
         scanRunning = false;
-        Log.d(TAG, "SCAN STOPPED");
+        //Log.d(TAG, "SCAN STOPPED");
     }
 
 
@@ -145,14 +148,14 @@ public class RecordForLocation implements SensorEventListener {
                 if (resetSinceMoveQueue) {
                     m_sinceMoveQueue.clear();
                     resetSinceMoveQueue = false;
-                    Log.d(TAG, "Reset sinceMoveQueue");
+                    //Log.d(TAG, "Reset sinceMoveQueue");
                 }
                 m_sinceMoveQueue.AddNew(offset);
-                Log.d(TAG, "OFFSET," + offset+"\n");
+                //Log.d(TAG, "OFFSET," + offset+"\n");
                 oldScanned = new ArrayList<Integer>();
                 for (ScanResult scan : scanned) {
                     macID = macLookup.GetId(scan.BSSID, scan.SSID);
-                    Log.d(TAG, macID + "," + scan.level+"\n");
+                    //Log.d(TAG, macID + "," + scan.level+"\n");
                     m_shortQueue.UpdateEnd(macID, (float)scan.level);
                     m_sinceMoveQueue.UpdateEnd(macID, (float)scan.level);
                     oldScanned.add(scan.level);
@@ -207,6 +210,8 @@ public class RecordForLocation implements SensorEventListener {
         // Find the best fit
         observationSummary = queue.GetSummary();
         summaryList.UpdateScores(observationSummary);
+
+
         int maxIndex = -1;
         float maxScore = -1e9f;
         for (int i = 0; i<summaryList.summaryList.size(); i++) {
@@ -219,43 +224,51 @@ public class RecordForLocation implements SensorEventListener {
         // Decide if the best fit is good enough to use
 
         // No location is recorded yet
+        boolean updatePos = false;
         if (bestFitIndex < 0) {
-            if (maxScore>thresh1) {
-                if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
-                    Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
-                    bestFitLevel = summaryList.summaryList.get(maxIndex).level;
-                    SetLevelOnUIThread(bestFitLevel);
-                }
-                bestFitTime = offset;
-                bestFitX = summaryList.summaryList.get(maxIndex).x;
-                bestFitY = summaryList.summaryList.get(maxIndex).y;
-                bestFitIndex = maxIndex;
-                Log.d(TAG, description + " used for first time");
-            }
-            else {
-                Log.d(TAG, description + " not used because score is not good enough");
-            }
+            updatePos = true;
+        }
+        else if (bestFitIndex==maxIndex){
+            updatePos = false;
+            //Log.d(TAG, "Same place");
         }
         else {
-            if (maxScore>thresh1) {
-                if (maxScore > summaryList.summaryList.get(bestFitIndex).score + Math.max(0, thresh2 -(offset-bestFitTime)*0.0005)) {
-                    if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
-                        Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
-                        bestFitLevel = summaryList.summaryList.get(maxIndex).level;
-                        SetLevelOnUIThread(bestFitLevel);
-                    }
-                    bestFitTime = offset;
-                    bestFitX = summaryList.summaryList.get(maxIndex).x;
-                    bestFitY = summaryList.summaryList.get(maxIndex).y;
-                    bestFitIndex = maxIndex;
-                    Log.d(TAG, description + " used - good enough score and improvement");
-                } else {
-                    Log.d(TAG, description + " not used because it does not offer a big enough improvement");
-                }
+            // Find the distance to the position with the best score
+            float x = summaryList.summaryList.get(maxIndex).x;
+            float y = summaryList.summaryList.get(maxIndex).y;
+            int level = summaryList.summaryList.get(maxIndex).level;
+            double dist_px = 1000.0;
+            if (level == bestFitLevel) {
+                dist_px = Math.sqrt((x - bestFitX) * (x - bestFitX) + (y - bestFitY) * (x - bestFitY));
+            } else {
+                float dx0 = connectionPoints.getX(nearestConnectionIndex, bestFitLevel) - bestFitX;
+                float dy0 = connectionPoints.getY(nearestConnectionIndex, bestFitLevel) - bestFitY;
+                float dx1 = connectionPoints.getX(nearestConnectionIndex, level) - x;
+                float dy1 = connectionPoints.getY(nearestConnectionIndex, level) - y;
+                dist_px = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1);
+            }
+            double timeToThere = (((dist_px / pxPerM) - 20) / walking_pace) * 1000;
+
+            if (timeToThere < (offset - bestFitTime)) {
+                updatePos = true;
+                //Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
             else {
-                Log.d(TAG, description + " not used because score is not good enough");
+                //Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
+        }
+        // Criteria met for position to be updated.
+        if (updatePos) {
+            if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
+                //Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
+                bestFitLevel = summaryList.summaryList.get(maxIndex).level;
+                SetLevelOnUIThread(bestFitLevel);
+            }
+            bestFitTime = offset;
+            bestFitX = summaryList.summaryList.get(maxIndex).x;
+            bestFitY = summaryList.summaryList.get(maxIndex).y;
+            bestFitIndex = maxIndex;
+            nearestConnectionIndex = connectionPoints.IndexOfClosest(bestFitLevel, bestFitX, bestFitY);
         }
     }
 
@@ -409,4 +422,5 @@ public class RecordForLocation implements SensorEventListener {
     public void onAccuracyChanged(Sensor sensor, int i) {
 
     }
+
 }

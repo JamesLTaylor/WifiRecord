@@ -37,6 +37,8 @@ public class RecordActivity extends Activity
     private Menu optionsMenu;
     private ScrollImageView floorMapView;
     private Map<String, FloorPlanImageList> floorplans = new HashMap<>();
+    private Map<String, Float> locationPxPerMs = new HashMap<>();
+    private Map<String, ConnectionPoints> locationConnectionPoints = new HashMap<>();
     static final String RO_RECORD = "Record Wifi at this Point";
     static final String RO_DELETE = "Delete this point";
     private ArrayList<String> recordOptions = new ArrayList<>(Arrays.asList(RO_RECORD, RO_DELETE));
@@ -58,6 +60,7 @@ public class RecordActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Data
         floorplans.put("Greenstone", new FloorPlanImageList());
         floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
         floorplans.get("Greenstone").add(1, "Upper Level", R.drawable.greenstone_upper);
@@ -65,6 +68,15 @@ public class RecordActivity extends Activity
         floorplans.put("Home", new FloorPlanImageList());
         floorplans.get("Home").add(0, "Downstairs", R.drawable.house_lower);
         floorplans.get("Home").add(1, "Upstairs", R.drawable.house_upper);
+
+        locationPxPerMs.put("Greenstone", 4.2f);
+        locationPxPerMs.put("Home", 38.0f);
+
+        locationConnectionPoints.put("Greenstone", new ConnectionPoints());
+        locationConnectionPoints.get("Greenstone").add(0, 530, 320, 1,570, 660);
+        locationConnectionPoints.get("Greenstone").add(0, 1020, 425, 1,1100, 690);
+        locationConnectionPoints.put("Home", new ConnectionPoints());
+        locationConnectionPoints.get("Home").add(0, 360, 490, 1,252, 54);
 
         // Defaults:
         currentPlan = "Home";
@@ -123,7 +135,8 @@ public class RecordActivity extends Activity
         if (viewMode==ScrollImageView.ViewMode.LOCATE)
         {
             // TODO: use the old locator with history.
-            locator = new RecordForLocation(currentPlan, summaryList, this, wifiManager);
+            locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
+                    locationPxPerMs.get(currentPlan), summaryList, this, wifiManager);
             sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
             locator.Start();
         }
@@ -222,7 +235,8 @@ public class RecordActivity extends Activity
             case R.id.menu_locate: {
                 // Start the locating thread
                 SetViewMode(ScrollImageView.ViewMode.LOCATE);
-                locator = new RecordForLocation(currentPlan, summaryList, this, wifiManager);
+                locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
+                        locationPxPerMs.get(currentPlan), summaryList, this, wifiManager);
                 sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
                 locator.Start();
                 return true;

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,6 +20,7 @@ import java.util.Map;
  */
 public class ReadingSummaryList {
     public List<ReadingSummary> summaryList;
+    private HashSet<Integer> validMacs;
 
     /**
      * Open a file and read the contents into a new ReadingSummaryList
@@ -27,6 +29,7 @@ public class ReadingSummaryList {
     public ReadingSummaryList(String location)
     {
         summaryList = new ArrayList<>();
+        validMacs = new HashSet<>();
         File fileToUse = GetMostRecentSummaryFile(location);
         if (fileToUse==null) {
             // TODO make an object that will return empty lists
@@ -51,6 +54,7 @@ public class ReadingSummaryList {
                     float mu = Float.parseFloat(cols[2]);
                     float sigma = Float.parseFloat(cols[3]);
                     summary.add(id, p, mu, sigma);
+                    validMacs.add(id);
                 }
             }
         } catch (FileNotFoundException e) {
@@ -153,7 +157,7 @@ public class ReadingSummaryList {
         for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
             float recordedMean = recordedEntry.getValue().get(1);
             float p = recordedEntry.getValue().get(0);
-            totalWeighting += recordedEntry.getValue().get(0);
+            totalWeighting += p;
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
                 float d = Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1));
@@ -167,7 +171,7 @@ public class ReadingSummaryList {
             }
         }
         for (Map.Entry<Integer, List<Float>> obsEntry : obsSummary.entrySet()) {
-            if (!recordedSummary.containsKey(obsEntry.getKey())){
+            if (!recordedSummary.containsKey(obsEntry.getKey()) && validMacs.contains(obsEntry.getKey()) ){
                 //in obs but not fingerprint
                 float obsP = obsEntry.getValue().get(0);
                 float obsMean = obsEntry.getValue().get(1);
