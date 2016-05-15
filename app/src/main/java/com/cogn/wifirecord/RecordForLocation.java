@@ -6,8 +6,8 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
-import android.util.FloatMath;
 import android.util.Log;
+import android.util.SparseArray;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -22,22 +22,28 @@ import java.util.Map;
  */
 public class RecordForLocation implements SensorEventListener {
     private static final String TAG = "WIFI_LOCATE";
-    private final String location;
     private final ReadingSummaryList summaryList;
     private RecordActivity callingActivity;
-    private WifiManager wifiManager;
-    private MacLookup macLookup;
+    private ProvidesWifiScan wifiScanner;
     private ConnectionPoints connectionPoints;
     private int nearestConnectionIndex;
-    private float pxPerM;
     private boolean scanRunning = false;
     private long delayMS = 100;
 
-    //For motion sensor
-    private float[] mGravity;
-    private float mAccel;
-    private float mAccelCurrent;
-    private float mAccelLast;
+    //adjustable parameters
+    private float pxPerM;
+    private float walking_pace =  2.0f; // m/s FAST: 7.6km/h;
+    private float errorAccomodationM = 20.0f; // Distance that is allowed to move in zero time
+    int lengthMovingObs = 3;
+    int minLengthStationaryObs = 5;
+    int maxLengthStationaryObs = 20;
+    boolean updateForSamePos = false;
+    private float stickyMinImprovment = 5.0f; // The amount by which the new score must be better than the last during the sticky period
+    private int stickyMaxTime = 3000;
+
+    private double mAccel;
+    private double mAccelCurrent;
+    private double mAccelLast;
     private boolean resetSinceMoveQueue;
 
     //For location
@@ -56,20 +62,17 @@ public class RecordForLocation implements SensorEventListener {
     private long prevTime = 0;
     private float dx = 0;
     private float dy = 0;
-    private float walking_pace =  2.0f; // m/s FAST: 7.6km/h;
     private float pxPerDelay;
 
     public RecordForLocation(String location, ConnectionPoints connectionPoints, float pxPerM,
                              ReadingSummaryList summaryList,
-                             RecordActivity callingActivity, WifiManager wifiManager) {
-        this.location = location;
+                             RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
         this.connectionPoints = connectionPoints;
         this.pxPerM = pxPerM;
         pxPerDelay = walking_pace*pxPerM * delayMS/1000;
         this.summaryList = summaryList;
         this.callingActivity = callingActivity;
-        this.wifiManager = wifiManager;
-        macLookup = new MacLookup(location);
+        this.wifiScanner = wifiScanner;
         mAccel = 0.00f;
         mAccelCurrent = SensorManager.GRAVITY_EARTH;
         mAccelLast = SensorManager.GRAVITY_EARTH;
@@ -81,12 +84,12 @@ public class RecordForLocation implements SensorEventListener {
     }
 
 
-    private boolean HaveChanged(ArrayList<Integer> oldScanned, List<ScanResult> scanned) {
-        if (oldScanned==null) return true;
-        if (oldScanned.size()!=scanned.size()) return true;
-        for (int i = 0; i<oldScanned.size(); i++)
+    private boolean HaveChanged(SparseArray<Float> oldResults, SparseArray<Float> results) {
+        if (oldResults==null) return true;
+        if (oldResults.size()!=results.size()) return true;
+        for (int i = 0; i<oldResults.size(); i++)
         {
-            if (oldScanned.get(i)!=scanned.get(i).level) return true;
+            if ((Math.abs(oldResults.valueAt(i)-results.valueAt(i))>1e-9)) return true;
         }
         return false;
     }
@@ -129,20 +132,18 @@ public class RecordForLocation implements SensorEventListener {
 
     public void StartScanning(){
         resetSinceMoveQueue = false;
-        ArrayList<Integer> oldScanned = null;
-        List<ScanResult> scanned;
+        SparseArray<Float> oldResults = null;
+        SparseArray<Float> results;
         long startTimeMillis = Calendar.getInstance().getTimeInMillis();
-        m_shortQueue = new ReadingsQueue(3);
-        m_sinceMoveQueue = new ReadingsQueue(20);
-        int macID;
+        m_shortQueue = new ReadingsQueue(lengthMovingObs);
+        m_sinceMoveQueue = new ReadingsQueue(maxLengthStationaryObs);
         List<String> scores = null;
         bestFitIndex = -1;
 
         while (scanRunning){
-            scanned = wifiManager.getScanResults();
-            if (HaveChanged(oldScanned, scanned)) {
-                offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
-
+            offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
+            results = wifiScanner.getScanResults(offset);
+            if (HaveChanged(oldResults, results)) {
                 // Add the scan to the Queues
                 m_shortQueue.AddNew(offset);
                 if (resetSinceMoveQueue) {
@@ -152,13 +153,11 @@ public class RecordForLocation implements SensorEventListener {
                 }
                 m_sinceMoveQueue.AddNew(offset);
                 //Log.d(TAG, "OFFSET," + offset+"\n");
-                oldScanned = new ArrayList<Integer>();
-                for (ScanResult scan : scanned) {
-                    macID = macLookup.GetId(scan.BSSID, scan.SSID);
+                oldResults = results.clone();
+                for (int i = 0; i<results.size(); i++) {
                     //Log.d(TAG, macID + "," + scan.level+"\n");
-                    m_shortQueue.UpdateEnd(macID, (float)scan.level);
-                    m_sinceMoveQueue.UpdateEnd(macID, (float)scan.level);
-                    oldScanned.add(scan.level);
+                    m_shortQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
+                    m_sinceMoveQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
                 }
 
                 // Find the best fit location, sets bestFitX and bestFitY
@@ -178,21 +177,19 @@ public class RecordForLocation implements SensorEventListener {
                 e.printStackTrace();
                 scanRunning = false;
             }
-            wifiManager.startScan();
         }
     }
 
     private void UpdateBestFit() {
-        float thresh1 = -100; // The minimum score that must be achieved before a short queue result is accepted
-        float thresh2 = 1.5f; // The amount by which the new score must be better than the last
-
         // device has not been moving.  Use the long queue.  Should be more accurate
-        if (m_sinceMoveQueue.size()>5) {
-            UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue", thresh1, thresh2);
+        if (m_sinceMoveQueue.size()>minLengthStationaryObs) {
+            SetMovementStatusOnUIThread("Stationary");
+            UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue");
         }
         // device has moved, use the short queue
         else {
-            UpdateBestFitFromQueue(m_shortQueue, "m_shortQueue", thresh1, thresh2);
+            SetMovementStatusOnUIThread("Moving");
+            UpdateBestFitFromQueue(m_shortQueue, "m_shortQueue");
         }
     }
 
@@ -200,18 +197,14 @@ public class RecordForLocation implements SensorEventListener {
      * Only if score is good enough in absolute sense and offers a big enough improvement over the previous location
      * @param queue which queue to use in makeing the summary.  shortQueue of recent recordings or long one since last move.
      * @param description log which queue is being used
-     * @param thresh1 absolute min score
-     * @param thresh2 amount by which score must improve
      */
-    private void UpdateBestFitFromQueue(ReadingsQueue queue, String description, float thresh1, float thresh2){
+    private void UpdateBestFitFromQueue(ReadingsQueue queue, String description){
         HashMap<Integer, List<Float>> observationSummary;
         ReadingSummaryList.ReadingSummary locationSummary;
 
-        // Find the best fit
+        // Find the unconstrained best fit
         observationSummary = queue.GetSummary();
         summaryList.UpdateScores(observationSummary);
-
-
         int maxIndex = -1;
         float maxScore = -1e9f;
         for (int i = 0; i<summaryList.summaryList.size(); i++) {
@@ -223,21 +216,31 @@ public class RecordForLocation implements SensorEventListener {
         }
         // Decide if the best fit is good enough to use
 
-        // No location is recorded yet
+
         boolean updatePos = false;
+        // No location is recorded yet, update
         if (bestFitIndex < 0) {
             updatePos = true;
         }
-        else if (bestFitIndex==maxIndex){
-            updatePos = false;
-            //Log.d(TAG, "Same place");
+        // At the same place, only consider updating is the score has improved,
+        // otherwise we could be on our way to somewhere else and we anchor this point too strongly
+        else if (bestFitIndex==maxIndex) {
+            updatePos = maxScore > summaryList.summaryList.get(bestFitIndex).score && updateForSamePos;
+            Log.d(TAG, "Same place");
         }
+        // Have not been at current location long and new location does not offer a significant
+        // impovement.  So don't update.
+        else if (maxScore<(summaryList.summaryList.get(bestFitIndex).score + stickyMinImprovment) && (offset-bestFitTime)<=stickyMaxTime){
+            updatePos = false;
+        }
+        // Default case, there is a better score at a new location. Check whether it is reasonable
+        // that we could have walked there in the time since the current location was recorded.
         else {
             // Find the distance to the position with the best score
             float x = summaryList.summaryList.get(maxIndex).x;
             float y = summaryList.summaryList.get(maxIndex).y;
             int level = summaryList.summaryList.get(maxIndex).level;
-            double dist_px = 1000.0;
+            double dist_px;
             if (level == bestFitLevel) {
                 dist_px = Math.sqrt((x - bestFitX) * (x - bestFitX) + (y - bestFitY) * (x - bestFitY));
             } else {
@@ -247,29 +250,40 @@ public class RecordForLocation implements SensorEventListener {
                 float dy1 = connectionPoints.getY(nearestConnectionIndex, level) - y;
                 dist_px = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1);
             }
-            double timeToThere = (((dist_px / pxPerM) - 20) / walking_pace) * 1000;
+            double timeToThere = (((dist_px / pxPerM) - errorAccomodationM) / walking_pace) * 1000;
 
             if (timeToThere < (offset - bestFitTime)) {
                 updatePos = true;
-                //Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
             else {
-                //Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
         }
         // Criteria met for position to be updated.
         if (updatePos) {
-            if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
-                //Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
-                bestFitLevel = summaryList.summaryList.get(maxIndex).level;
-                SetLevelOnUIThread(bestFitLevel);
-            }
             bestFitTime = offset;
             bestFitX = summaryList.summaryList.get(maxIndex).x;
             bestFitY = summaryList.summaryList.get(maxIndex).y;
             bestFitIndex = maxIndex;
             nearestConnectionIndex = connectionPoints.IndexOfClosest(bestFitLevel, bestFitX, bestFitY);
+            if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
+                //Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
+                bestFitLevel = summaryList.summaryList.get(maxIndex).level;
+                SetLevelOnUIThread(bestFitLevel);
+                currentX = bestFitX; // Circle does not need to drift accross levels.
+                currentY = bestFitY;
+            }
         }
+    }
+
+    private void SetMovementStatusOnUIThread(final String movementStatus) {
+        callingActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                callingActivity.UpdateMovementStatus(movementStatus);
+            }
+        });
     }
 
     /**
@@ -310,7 +324,7 @@ public class RecordForLocation implements SensorEventListener {
 
     private class ReadingsQueue{
 
-        ArrayDeque<Map<Integer, Float>> values;
+        ArrayDeque<SparseArray<Float>> values;
         int maxLength;
 
         public ReadingsQueue(int maxLength)
@@ -337,7 +351,7 @@ public class RecordForLocation implements SensorEventListener {
          */
         public void AddNew(long latestTime)
         {
-            values.addLast(new HashMap<Integer, Float>());
+            values.addLast(new SparseArray<Float>());
             if (values.size()>maxLength) {
                 values.removeFirst();
             }
@@ -357,8 +371,6 @@ public class RecordForLocation implements SensorEventListener {
 
         /**
          * Population standard deviation in case there is only one entry point
-         * @param values
-         * @return
          */
         private float GetStd(List<Float> values) {
             double total = 0.0;
@@ -370,19 +382,20 @@ public class RecordForLocation implements SensorEventListener {
 
 
         public HashMap<Integer, List<Float>> GetSummary() {
-            HashMap<Integer, ArrayList<Float>> aggregate = new HashMap<Integer, ArrayList<Float>>();
-            for (Map<Integer, Float> value : values)
+            HashMap<Integer, ArrayList<Float>> aggregate = new HashMap<>();
+            for (SparseArray<Float> value : values)
             {
-                for (Map.Entry<Integer, Float> entry : value.entrySet()) {
-                    if (!aggregate.containsKey(entry.getKey())) {
-                        aggregate.put(entry.getKey(), new ArrayList<Float>(Arrays.asList(entry.getValue())));
+                for (int i=0; i<value.size(); i++) {
+                //for (Map.Entry<Integer, Float> entry : value. value.entrySet()) {
+                    if (!aggregate.containsKey(value.keyAt(i))) {
+                        aggregate.put(value.keyAt(i), new ArrayList<>(Arrays.asList(value.valueAt(i))));
                     }
                     else {
-                        aggregate.get(entry.getKey()).add(entry.getValue());
+                        aggregate.get(value.keyAt(i)).add(value.valueAt(i));
                     }
                 }
             }
-            HashMap<Integer, List<Float>> summary = new HashMap<Integer, List<Float>>();
+            HashMap<Integer, List<Float>> summary = new HashMap<>();
             float p;
             float mu;
             float sigma;
@@ -390,7 +403,7 @@ public class RecordForLocation implements SensorEventListener {
                 p = aggregateEntry.getValue().size()/values.size();
                 mu = GetMean(aggregateEntry.getValue());
                 sigma = GetStd(aggregateEntry.getValue());
-                summary.put(aggregateEntry.getKey(), new ArrayList<Float>(Arrays.asList(p, mu, sigma)));
+                summary.put(aggregateEntry.getKey(), new ArrayList<>(Arrays.asList(p, mu, sigma)));
             }
             return summary;
         }
@@ -398,21 +411,20 @@ public class RecordForLocation implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            mGravity = event.values.clone();
+            float[] mGravity = event.values.clone();
             // Shake detection
             float x = mGravity[0];
             float y = mGravity[1];
             float z = mGravity[2];
             mAccelLast = mAccelCurrent;
-            mAccelCurrent = FloatMath.sqrt(x * x + y * y + z * z);
+            mAccelCurrent = Math.sqrt(x * x + y * y + z * z);
 
-            float delta = mAccelCurrent - mAccelLast;
-            mAccel = mAccel * 0.9f + delta;
+            double delta = mAccelCurrent - mAccelLast;
+            mAccel = mAccel * 0.9 + delta;
             // Make this higher or lower according to how much
             // motion you want to detect
             if(mAccel > 0.5){
                 resetSinceMoveQueue = true;
-                Log.d(TAG, "movement logged after: " + offset + "ms : mAccel=" + mAccel);
             }
         }
 

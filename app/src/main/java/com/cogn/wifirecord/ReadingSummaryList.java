@@ -1,5 +1,7 @@
 package com.cogn.wifirecord;
 
+import android.util.FloatMath;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -157,10 +159,11 @@ public class ReadingSummaryList {
         for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
             float recordedMean = recordedEntry.getValue().get(1);
             float p = recordedEntry.getValue().get(0);
-            totalWeighting += p;
+            totalWeighting += w2 * p * Math.abs(-90-recordedMean);
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
-                float d = Math.abs(recordedMean - obsSummary.get(recordedEntry.getKey()).get(1));
+                float obsMean = obsSummary.get(recordedEntry.getKey()).get(1);
+                float d = Math.abs(recordedMean - obsMean);
                 d = Math.max(0, d-2);
                 score -= w1 * d * p;
             } else {
@@ -180,7 +183,7 @@ public class ReadingSummaryList {
                 }
             }
         }
-        return score/totalWeighting;
+        return 100.0f*score/totalWeighting;
 
     }
 

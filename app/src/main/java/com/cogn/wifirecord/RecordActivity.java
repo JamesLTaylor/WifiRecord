@@ -136,7 +136,7 @@ public class RecordActivity extends Activity
         {
             // TODO: use the old locator with history.
             locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
-                    locationPxPerMs.get(currentPlan), summaryList, this, wifiManager);
+                    locationPxPerMs.get(currentPlan), summaryList, this, new WifiScanner(wifiManager, currentPlan));
             sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
             locator.Start();
         }
@@ -188,6 +188,10 @@ public class RecordActivity extends Activity
         floorMapView.UpdateLocateProgress(scores, bestGuessX, bestGuessY);
     }
 
+    public void UpdateMovementStatus(String movementStatus) {
+        floorMapView.UpdateMovementStatus(movementStatus);
+    }
+
     public void SetScanFinished() {
         floorMapView.SetScanFinished();
     }
@@ -219,6 +223,14 @@ public class RecordActivity extends Activity
         }).start();
     }
 
+    public void StartLocating(ProvidesWifiScan wifiScanner){
+        SetViewMode(ScrollImageView.ViewMode.LOCATE);
+        locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
+                locationPxPerMs.get(currentPlan), summaryList, this, wifiScanner);
+        sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        locator.Start();
+    }
+
 
     /**
      * Item selected in main action bar popupMenu
@@ -234,11 +246,7 @@ public class RecordActivity extends Activity
         switch (item.getItemId()) {
             case R.id.menu_locate: {
                 // Start the locating thread
-                SetViewMode(ScrollImageView.ViewMode.LOCATE);
-                locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
-                        locationPxPerMs.get(currentPlan), summaryList, this, wifiManager);
-                sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
-                locator.Start();
+                StartLocating(new WifiScanner(wifiManager, currentPlan));
                 return true;
             }
             case R.id.menu_record: {
@@ -291,7 +299,7 @@ public class RecordActivity extends Activity
         }
     }
 
-    private void SetViewMode(ScrollImageView.ViewMode newMode){
+    public void SetViewMode(ScrollImageView.ViewMode newMode){
         //Only update the option menu if it has already been created.  Seems to happen after onResume which calls this method.
         if (optionsMenu!=null) {
             if (newMode == ScrollImageView.ViewMode.LOCATE) {
@@ -333,6 +341,17 @@ public class RecordActivity extends Activity
         SetLevel(floorplans.get(currentPlan).IDFromDescription(newLevelDescription));
     }
 
+    public void SetLocation(String value) {
+        currentPlan = value;
+        wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
+
+        // read the files that store previous points
+        // TODO: If this ends up being slow do it on another thread.
+        levelsAndPoints = new PreviousRecordings(currentPlan);
+        summaryList = new ReadingSummaryList(currentPlan);
+        SetLevel(floorplans.get(currentPlan).GetDefaultLevel());
+    }
+
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -352,14 +371,7 @@ public class RecordActivity extends Activity
         switch (type) {
             case "location":
                 if (!currentPlan.equals(results.getString("value"))) {
-                    currentPlan = results.getString("value");
-                    wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
-
-                    // read the files that store previous points
-                    // TODO: If this ends up being slow do it on another thread.
-                    levelsAndPoints = new PreviousRecordings(currentPlan);
-                    summaryList = new ReadingSummaryList(currentPlan);
-                    SetLevel(floorplans.get(currentPlan).GetDefaultLevel());
+                    SetLocation(results.getString("value"));
                 }
                 popupMenu.dismiss();
                 return;
@@ -384,7 +396,6 @@ public class RecordActivity extends Activity
                 popupMenu.dismiss();
         }
     }
-
 
     /**
      * Make a popupMenu at the location of a second click on the floormap view, asking the user if they
@@ -415,9 +426,6 @@ public class RecordActivity extends Activity
         }
 
     }
-
-
-
 
     /**
      * Keeps the floormaps indexed by the location name and then a number and description for the levels.

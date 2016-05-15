@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.FloatMath;
 import android.view.Display;
@@ -17,12 +19,12 @@ import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
 
-import static android.util.FloatMath.sqrt;
-
 /*
 Taken from https://sites.google.com/site/androidhowto/how-to-1/custom-scrollable-image-view
  */
 public class ScrollImageView extends View {
+    private String movementStatus = null;
+
     public enum ViewMode {LOCATE, RECORD}
     private RecordMenuMaker recordMenuMaker;
     private final int DEFAULT_PADDING = 10;
@@ -203,6 +205,10 @@ public class ScrollImageView extends View {
         latestCircleY = null;
     }
 
+    public void UpdateMovementStatus(String movementStatus) {
+        this.movementStatus = movementStatus;
+    }
+
 
     /**
      * Handles scrolling and clicking
@@ -265,7 +271,7 @@ public class ScrollImageView extends View {
                 //click event has occurred
                 boolean addCircle = true;
                 if (latestCircleX!=null && latestCircleY!=null) {
-                    float dist = sqrt(FloatMath.pow(latestCircleX - imageX, 2) + FloatMath.pow(latestCircleY - imageY, 2));
+                    double dist = Math.sqrt(Math.pow(latestCircleX - imageX, 2) + Math.pow(latestCircleY - imageY, 2));
                     if (dist < 50.0) {
                         recordMenuMaker.MakeRecordMenu(latestCircleX/density, latestCircleY/density);
                     }
@@ -390,6 +396,18 @@ public class ScrollImageView extends View {
 
             while (xIter.hasNext() && yIter.hasNext() && scoreIter.hasNext()) {
                 canvas.drawText(scoreIter.next(), xIter.next() + mTotalX, yIter.next() + mTotalY, textPaint);
+            }
+
+            if (movementStatus!=null){
+
+                Paint textRectPaint = new Paint();
+                textRectPaint.setAlpha(50);
+                textRectPaint.setColor(Color.WHITE);
+                Rect textRect = new Rect();
+                textPaint.getTextBounds(movementStatus, 0, movementStatus.length(), textRect);
+                canvas.drawRect(textRect, textRectPaint);
+                canvas.drawText(movementStatus, 20, 20, textPaint);
+
             }
 
         }
