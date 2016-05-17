@@ -37,7 +37,6 @@ public class RecordActivity extends Activity
     private Menu optionsMenu;
     private ScrollImageView floorMapView;
     private Map<String, FloorPlanImageList> floorplans = new HashMap<>();
-    private Map<String, Float> locationPxPerMs = new HashMap<>();
     private Map<String, ConnectionPoints> locationConnectionPoints = new HashMap<>();
     static final String RO_RECORD = "Record Wifi at this Point";
     static final String RO_DELETE = "Delete this point";
@@ -68,9 +67,6 @@ public class RecordActivity extends Activity
         floorplans.put("Home", new FloorPlanImageList());
         floorplans.get("Home").add(0, "Downstairs", R.drawable.house_lower);
         floorplans.get("Home").add(1, "Upstairs", R.drawable.house_upper);
-
-        locationPxPerMs.put("Greenstone", 4.2f);
-        locationPxPerMs.put("Home", 38.0f);
 
         locationConnectionPoints.put("Greenstone", new ConnectionPoints());
         locationConnectionPoints.get("Greenstone").add(0, 530, 320, 1,570, 660);
@@ -135,8 +131,8 @@ public class RecordActivity extends Activity
         if (viewMode==ScrollImageView.ViewMode.LOCATE)
         {
             // TODO: use the old locator with history.
-            locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
-                    locationPxPerMs.get(currentPlan), summaryList, this, new WifiScanner(wifiManager, currentPlan));
+            locator = new RecordForLocation(getLocationParameters(currentPlan), locationConnectionPoints.get(currentPlan),
+                                            summaryList, this, new WifiScanner(wifiManager, currentPlan));
             sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
             locator.Start();
         }
@@ -223,10 +219,53 @@ public class RecordActivity extends Activity
         }).start();
     }
 
+    private String getPref(int id){
+        return PreferenceManager.getDefaultSharedPreferences(this).getString(getString(id), null);
+    }
+
+    public RecordForLocation.Parameters getLocationParameters(String location)
+    {
+        switch (location) {
+            case "Home":
+            {
+                float pxPerM = 38.0f;
+                float walkingPace =  2.0f; // m/s FAST: 7.6km/h;
+                float errorAccommodationM = 20.0f; // Distance that is allowed to move in zero time
+                int lengthMovingObs = 3;
+                int minLengthStationaryObs = 5;
+                int maxLengthStationaryObs = 20;
+                boolean updateForSamePos = false;
+                float stickyMinImprovement = 5.0f; // The amount by which the new score must be better than the last during the sticky period
+                int stickyMaxTime = 3000;
+                return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,
+                        minLengthStationaryObs,maxLengthStationaryObs,updateForSamePos,stickyMinImprovement,stickyMaxTime);
+            }
+            case "Greenstone":
+            {
+                float pxPerM = 4.2f;
+                float walkingPace =  Float.parseFloat(getPref(R.string.key_location_walking_pace));
+                float errorAccommodationM = Float.parseFloat(getPref(R.string.key_location_error_accommodation));
+                int lengthMovingObs = Integer.parseInt(getPref(R.string.key_location_length_moving_obs));
+                int minLengthStationaryObs = Integer.parseInt(getPref(R.string.key_location_min_length_stationary_obs));
+                int maxLengthStationaryObs = Integer.parseInt(getPref(R.string.key_location_max_length_stationary_obs));
+                boolean updateForSamePos = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getString(R.string.key_location_update_same_place), true);
+                float stickyMinImprovement = Float.parseFloat(getPref(R.string.key_location_sticky_min_improvement));
+                int stickyMaxTime = Integer.parseInt(getPref(R.string.key_location_sticky_max_time));
+                return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,
+                        minLengthStationaryObs,maxLengthStationaryObs,updateForSamePos,stickyMinImprovement,stickyMaxTime);
+
+            }
+            default: {
+                return null;
+            }
+        }
+
+    }
+
     public void StartLocating(ProvidesWifiScan wifiScanner){
         SetViewMode(ScrollImageView.ViewMode.LOCATE);
-        locator = new RecordForLocation(currentPlan, locationConnectionPoints.get(currentPlan),
-                locationPxPerMs.get(currentPlan), summaryList, this, wifiScanner);
+        locator = new RecordForLocation(getLocationParameters(currentPlan), locationConnectionPoints.get(currentPlan),
+                                        summaryList, this, wifiScanner);
         sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         locator.Start();
     }

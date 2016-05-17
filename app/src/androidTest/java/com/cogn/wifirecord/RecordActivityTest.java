@@ -27,7 +27,8 @@ public class RecordActivityTest {
         //ViewMatchers.
         //onView(ViewMatchers.withId(R.id.recordLayout)).perform(click());
         final RecordActivity record = mActivityRule.getActivity();
-        InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.home_continuous_20160515_070226);
+        //InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.home_continuous_20160515_070226);
+        InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.greenstone_continuous_20160511_130351);
         final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
         long totalRecordingTime = offlineWifiProvider.getTotalRecordingTime();
         SparseArray<Float> scan = offlineWifiProvider.getScanResults(0);
@@ -35,7 +36,7 @@ public class RecordActivityTest {
             @Override
             public void run() {
                 //record.SetLocation("Home");
-                record.SetLocation("Home");
+                record.SetLocation("Greenstone");
                 record.StartLocating(offlineWifiProvider);
             }
         });

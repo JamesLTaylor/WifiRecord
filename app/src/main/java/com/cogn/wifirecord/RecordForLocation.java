@@ -4,8 +4,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.net.wifi.ScanResult;
-import android.net.wifi.WifiManager;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -30,16 +28,7 @@ public class RecordForLocation implements SensorEventListener {
     private boolean scanRunning = false;
     private long delayMS = 100;
 
-    //adjustable parameters
-    private float pxPerM;
-    private float walking_pace =  2.0f; // m/s FAST: 7.6km/h;
-    private float errorAccomodationM = 20.0f; // Distance that is allowed to move in zero time
-    int lengthMovingObs = 3;
-    int minLengthStationaryObs = 5;
-    int maxLengthStationaryObs = 20;
-    boolean updateForSamePos = false;
-    private float stickyMinImprovment = 5.0f; // The amount by which the new score must be better than the last during the sticky period
-    private int stickyMaxTime = 3000;
+    private Parameters params;
 
     private double mAccel;
     private double mAccelCurrent;
@@ -64,12 +53,16 @@ public class RecordForLocation implements SensorEventListener {
     private float dy = 0;
     private float pxPerDelay;
 
-    public RecordForLocation(String location, ConnectionPoints connectionPoints, float pxPerM,
+    public RecordForLocation(){
+        summaryList = null;
+    }
+
+    public RecordForLocation(Parameters params, ConnectionPoints connectionPoints,
                              ReadingSummaryList summaryList,
                              RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
+        this.params = params;
         this.connectionPoints = connectionPoints;
-        this.pxPerM = pxPerM;
-        pxPerDelay = walking_pace*pxPerM * delayMS/1000;
+        pxPerDelay = params.walkingPace*params.pxPerM * delayMS/1000;
         this.summaryList = summaryList;
         this.callingActivity = callingActivity;
         this.wifiScanner = wifiScanner;
@@ -135,8 +128,8 @@ public class RecordForLocation implements SensorEventListener {
         SparseArray<Float> oldResults = null;
         SparseArray<Float> results;
         long startTimeMillis = Calendar.getInstance().getTimeInMillis();
-        m_shortQueue = new ReadingsQueue(lengthMovingObs);
-        m_sinceMoveQueue = new ReadingsQueue(maxLengthStationaryObs);
+        m_shortQueue = new ReadingsQueue(params.lengthMovingObs);
+        m_sinceMoveQueue = new ReadingsQueue(params.maxLengthStationaryObs);
         List<String> scores = null;
         bestFitIndex = -1;
 
@@ -182,7 +175,7 @@ public class RecordForLocation implements SensorEventListener {
 
     private void UpdateBestFit() {
         // device has not been moving.  Use the long queue.  Should be more accurate
-        if (m_sinceMoveQueue.size()>minLengthStationaryObs) {
+        if (m_sinceMoveQueue.size()>params.minLengthStationaryObs) {
             SetMovementStatusOnUIThread("Stationary");
             UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue");
         }
@@ -225,12 +218,13 @@ public class RecordForLocation implements SensorEventListener {
         // At the same place, only consider updating is the score has improved,
         // otherwise we could be on our way to somewhere else and we anchor this point too strongly
         else if (bestFitIndex==maxIndex) {
-            updatePos = maxScore > summaryList.summaryList.get(bestFitIndex).score && updateForSamePos;
+            updatePos = maxScore > summaryList.summaryList.get(bestFitIndex).score && params.updateForSamePos;
             Log.d(TAG, "Same place");
         }
         // Have not been at current location long and new location does not offer a significant
         // impovement.  So don't update.
-        else if (maxScore<(summaryList.summaryList.get(bestFitIndex).score + stickyMinImprovment) && (offset-bestFitTime)<=stickyMaxTime){
+        else if (maxScore<(summaryList.summaryList.get(bestFitIndex).score + params.stickyMinImprovement) &&
+                (offset-bestFitTime)<=params.stickyMaxTime){
             updatePos = false;
         }
         // Default case, there is a better score at a new location. Check whether it is reasonable
@@ -242,15 +236,15 @@ public class RecordForLocation implements SensorEventListener {
             int level = summaryList.summaryList.get(maxIndex).level;
             double dist_px;
             if (level == bestFitLevel) {
-                dist_px = Math.sqrt((x - bestFitX) * (x - bestFitX) + (y - bestFitY) * (x - bestFitY));
+                dist_px = Math.sqrt((x - bestFitX) * (x - bestFitX) + (y - bestFitY) * (y - bestFitY));
             } else {
                 float dx0 = connectionPoints.getX(nearestConnectionIndex, bestFitLevel) - bestFitX;
                 float dy0 = connectionPoints.getY(nearestConnectionIndex, bestFitLevel) - bestFitY;
                 float dx1 = connectionPoints.getX(nearestConnectionIndex, level) - x;
                 float dy1 = connectionPoints.getY(nearestConnectionIndex, level) - y;
-                dist_px = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                dist_px = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1) + params.pxPerM*10.0;
             }
-            double timeToThere = (((dist_px / pxPerM) - errorAccomodationM) / walking_pace) * 1000;
+            double timeToThere = (((dist_px / params.pxPerM) - params.errorAccomodationM) / params.walkingPace) * 1000;
 
             if (timeToThere < (offset - bestFitTime)) {
                 updatePos = true;
@@ -435,4 +429,35 @@ public class RecordForLocation implements SensorEventListener {
 
     }
 
+    public class Parameters {
+        //adjustable parameters
+        public float pxPerM;
+        public float walkingPace =  2.0f; // m/s FAST: 7.6km/h;
+        public float errorAccomodationM = 20.0f; // Distance that is allowed to move in zero time
+        public int lengthMovingObs = 3;
+        public int minLengthStationaryObs = 5;
+        public int maxLengthStationaryObs = 20;
+        public boolean updateForSamePos = false;
+        public float stickyMinImprovement = 5.0f; // The amount by which the new score must be better than the last during the sticky period
+        public int stickyMaxTime = 3000;
+
+        public Parameters(float pxPerM, float walkingPace, float errorAccomodationM, int lengthMovingObs,
+                          int minLengthStationaryObs, int maxLengthStationaryObs, boolean updateForSamePos,
+                          float stickyMinImprovement, int stickyMaxTime)
+        {
+            this.pxPerM = pxPerM;
+            this.walkingPace = walkingPace;
+            this.errorAccomodationM = errorAccomodationM;
+            this.lengthMovingObs = lengthMovingObs;
+            this.minLengthStationaryObs = minLengthStationaryObs;
+            this.maxLengthStationaryObs = maxLengthStationaryObs;
+            this.updateForSamePos = updateForSamePos;
+            this.stickyMinImprovement = stickyMinImprovement;
+            this.stickyMaxTime = stickyMaxTime;
+
+
+        }
+
+
+    }
 }

@@ -4,71 +4,26 @@
     <string name="app_name">WifiRecord</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_select_location">SelectLocationActivity</string>
-
     <string name="title_activity_manual_record">ManualRecordActivity</string>
     <string name="title_activity_settings">Settings</string>
 
     <!-- Strings related to Settings -->
+    <string name="pref_header_general">Recording</string>
+    <string name="pref_header_location">Location</string>
 
-    <!-- Example General settings -->
-    <string name="pref_header_general">General</string>
-
-    <string name="pref_title_social_recommendations">Enable social recommendations</string>
-    <string name="pref_description_social_recommendations">Recommendations for people to contact
-        based on your message history
-    </string>
-
-    <string name="pref_title_display_name">Display name</string>
-    <string name="pref_default_display_name">John Smith</string>
-
-    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
-    <string-array name="pref_number_of_scans">
-        <item>1</item>
-        <item>2</item>
-        <item>5</item>
-        <item>10</item>
-        <item>20</item>
-        <item>30</item>
-        <item>40</item>
-    </string-array>
-    <string-array name="pref_example_list_values">
-        <item>1</item>
-        <item>0</item>
-        <item>-1</item>
-    </string-array>
-
-    <!-- Example settings for Data & Sync -->
-    <string name="pref_header_data_sync">Data &amp; sync</string>
-
-    <string name="pref_title_sync_frequency">Sync frequency</string>
-    <string-array name="pref_sync_frequency_titles">
-        <item>15 minutes</item>
-        <item>30 minutes</item>
-        <item>1 hour</item>
-        <item>3 hours</item>
-        <item>6 hours</item>
-        <item>Never</item>
-    </string-array>
-    <string-array name="pref_sync_frequency_values">
-        <item>15</item>
-        <item>30</item>
-        <item>60</item>
-        <item>180</item>
-        <item>360</item>
-        <item>-1</item>
-    </string-array>
-
-    <string name="pref_title_system_sync_settings">System sync settings</string>
-
-    <!-- Example settings for Notifications -->
-    <string name="pref_header_notifications">Notifications</string>
-
-    <string name="pref_title_new_message_notifications">New message notifications</string>
-
-    <string name="pref_title_ringtone">Ringtone</string>
-    <string name="pref_ringtone_silent">Silent</string>
-
-    <string name="pref_title_vibrate">Vibrate</string>
     <string name="key_number_of_scans">number_of_scans_list</string>
+    <string name="key_location_walking_pace">key_location_walking_pace</string>
+    <string name="key_location_error_accommodation">key_location_error_accommodation</string>
+    <string name="key_location_length_moving_obs">key_location_length_moving_obs</string>
+    <string name="key_location_min_length_stationary_obs">key_location_min_length_stationary_obs</string>
+    <string name="key_location_max_length_stationary_obs">key_location_max_length_stationary_obs</string>
+    <string name="key_location_update_same_place">key_location_update_same_place</string>
+    <string name="key_location_sticky_min_improvement">key_location_sticky_min_improvment</string>
+    <string name="key_location_sticky_max_time">key_location_sticky_max_time</string>
+
+    <string name="summary_location_walking_pace">Used to decide if the most likely location could have been reached from the current location.(%s m/s)</string>
+    <string name="summary_location_error_accommodation">Distance that can be moved in zero time, accommodates for the possible error in the current location. (%s m)</string>
+    <string name="summary_location_sticky_max_time">Amount of time for which small improvements will be ignored. (%s ms)</string>
+    <string name="summary_location_sticky_min_improvement">Minimum score improvement to update while sticky. (%s)</string>
 
 </resources>

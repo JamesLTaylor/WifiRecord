@@ -8,5 +8,8 @@
         <attr name="metaButtonBarStyle" format="reference" />
         <attr name="metaButtonBarButtonStyle" format="reference" />
     </declare-styleable>
+    <declare-styleable name="EditTextPreferenceWithSummary">
+        <attr name="summary_format" format="string" />
+    </declare-styleable>
 
 </resources>

@@ -1,0 +1,71 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res/com.cogn.wifirecord">
+
+    <com.cogn.wifirecord.EditTextPreferenceWithSummary
+        android:defaultValue="2.0"
+        android:key="@string/key_location_walking_pace"
+        android:numeric="decimal"
+        android:title="Walking pace (m/s)"
+        android:summary="@string/summary_location_walking_pace"
+        custom:summary_format="@string/summary_location_walking_pace">
+    </com.cogn.wifirecord.EditTextPreferenceWithSummary>
+
+
+    <com.cogn.wifirecord.EditTextPreferenceWithSummary
+        android:defaultValue="20.0"
+        android:key="@string/key_location_error_accommodation"
+        android:numeric="integer"
+        android:title="Error accomodation (m)"
+        custom:summary_format="@string/summary_location_error_accommodation" />
+
+    <ListPreference
+        android:defaultValue="1"
+        android:entries="@array/pref_location_nscans_moving"
+        android:entryValues="@array/pref_location_nscans_moving"
+        android:key="@string/key_location_length_moving_obs"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="Number of scans per reading while moving" />
+
+    <ListPreference
+        android:defaultValue="5"
+        android:entries="@array/pref_location_stationary_min"
+        android:entryValues="@array/pref_location_stationary_min"
+        android:key="@string/key_location_min_length_stationary_obs"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="Minumum number of scans to use once stationary" />
+
+    <ListPreference
+        android:defaultValue="20"
+        android:entries="@array/pref_location_stationary_max"
+        android:entryValues="@array/pref_location_stationary_max"
+        android:key="@string/key_location_max_length_stationary_obs"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="Maximum number of scans to use once stationary" />
+
+
+    <SwitchPreference
+        android:defaultValue="true"
+        android:key="@string/key_location_update_same_place"
+        android:summary="This affects the stickyness of a point."
+        android:title="Update location when same as previous" />
+
+    <com.cogn.wifirecord.EditTextPreferenceWithSummary
+        android:defaultValue="5.0"
+        android:key="@string/key_location_sticky_min_improvement"
+        android:numeric="decimal"
+        android:title="Sticky Min Score."
+        custom:summary_format ="@string/summary_location_sticky_min_improvement" />
+
+    <com.cogn.wifirecord.EditTextPreferenceWithSummary
+        android:defaultValue="3000"
+        android:key="@string/key_location_sticky_max_time"
+        android:numeric="integer"
+        android:title="Sticky time (ms)"
+        custom:summary_format="@string/summary_location_sticky_max_time" />
+
+
+
+</PreferenceScreen>

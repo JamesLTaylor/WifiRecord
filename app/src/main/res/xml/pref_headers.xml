@@ -8,8 +8,8 @@
         android:title="@string/pref_header_general" />
 
     <header
-        android:fragment="com.cogn.wifirecord.SettingsActivity$DataSyncPreferenceFragment"
-        android:icon="@drawable/ic_sync_black_24dp"
-        android:title="@string/pref_header_data_sync" />
+        android:fragment="com.cogn.wifirecord.SettingsActivity$LocationPreferenceFragment"
+        android:icon="@drawable/ic_info_black_24dp"
+        android:title="@string/pref_header_location" />
 
 </preference-headers>
