@@ -42,6 +42,7 @@ public class RecordForLocation implements SensorEventListener {
     private int bestFitLevel;
     private int bestFitIndex;
     private long bestFitTime;
+    private float bestFitScore;
     private ReadingsQueue m_shortQueue;
     private ReadingsQueue m_sinceMoveQueue;
 
@@ -139,13 +140,10 @@ public class RecordForLocation implements SensorEventListener {
                 if (resetSinceMoveQueue) {
                     m_sinceMoveQueue.clear();
                     resetSinceMoveQueue = false;
-                    //Log.d(TAG, "Reset sinceMoveQueue");
                 }
                 m_sinceMoveQueue.AddNew(offset);
-                //Log.d(TAG, "OFFSET," + offset+"\n");
                 oldResults = results.clone();
                 for (int i = 0; i<results.size(); i++) {
-                    //Log.d(TAG, macID + "," + scan.level+"\n");
                     m_shortQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
                     m_sinceMoveQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
                 }
@@ -160,7 +158,12 @@ public class RecordForLocation implements SensorEventListener {
                 UpdateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
 
-            if (scores!=null) UpdateOnUIThread(scores, currentX, currentY);
+
+            if (scores!=null)
+            {
+                float radius = (((offset - bestFitTime)/1000.0f) * params.walkingPace + params.errorAccomodationM) * params.pxPerM;
+                UpdateOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius);
+            }
 
             try { Thread.sleep(delayMS); }
             catch (InterruptedException e) {
@@ -171,8 +174,14 @@ public class RecordForLocation implements SensorEventListener {
     }
 
     private void UpdateBestFit() {
+        //  nothing set yet.
+        if (bestFitIndex<0) {
+            storedLocationInfo.updateScores(m_shortQueue.GetSummary());
+            int maxIndex = storedLocationInfo.getBestScoreIndex();
+            updateBestFit(maxIndex);
+        }
         // device has not been moving.  Use the long queue.  Should be more accurate
-        if (m_sinceMoveQueue.size()>params.minLengthStationaryObs) {
+        else if (m_sinceMoveQueue.size()>params.minLengthStationaryObs) {
             SetMovementStatusOnUIThread("Stationary");
             UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue");
         }
@@ -184,6 +193,7 @@ public class RecordForLocation implements SensorEventListener {
     }
 
     /**
+     * Checks if there are any points that offer better scores than the current.
      * Only if score is good enough in absolute sense and offers a big enough improvement over the previous location
      * @param queue which queue to use in makeing the summary.  shortQueue of recent recordings or long one since last move.
      * @param description log which queue is being used
@@ -194,28 +204,35 @@ public class RecordForLocation implements SensorEventListener {
 
         // Find the unconstrained best fit
         observationSummary = queue.GetSummary();
-        storedLocationInfo.updateScores(observationSummary);
+        double elapsedTime = (offset - bestFitTime);  // Time since the last time that the location was updated
+        storedLocationInfo.updateScores(m_shortQueue.GetSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
         int maxIndex = storedLocationInfo.getBestScoreIndex();
         float maxScore = storedLocationInfo.getScoreAt(maxIndex);
+
         // Decide if the best fit is good enough to use
-
-
         boolean updatePos = false;
-        // No location is recorded yet, update
-        if (bestFitIndex < 0) {
-            updatePos = true;
-        }
         // At the same place, only consider updating is the score has improved,
         // otherwise we could be on our way to somewhere else and we anchor this point too strongly
-        else if (bestFitIndex==maxIndex) {
-            updatePos = maxScore > storedLocationInfo.getScoreAt(bestFitIndex) && params.updateForSamePos;
-            Log.d(TAG, "Same place");
+        if (bestFitIndex==maxIndex) {
+            if (maxScore > bestFitScore){
+                if (params.updateForSamePos) {
+                    updatePos = true;
+                    //Log.d(TAG, "Same place - update because score improved and settings allow");
+                } else {
+                    updatePos = false;
+                    //Log.d(TAG, "Same place - not update because improved but settings do not allow");
+                }
+            } else {
+                updatePos = false;
+                //Log.d(TAG, "Same place - not update because not improved score");
+            }
         }
         // Have not been at current location long and new location does not offer a significant
         // improvement.  So don't update.
-        else if (maxScore<(storedLocationInfo.getScoreAt(bestFitIndex) + params.stickyMinImprovement) &&
+        else if (maxScore<(bestFitScore + params.stickyMinImprovement) &&
                 (offset-bestFitTime)<=params.stickyMaxTime){
             updatePos = false;
+            //Log.d(TAG, "Sticky time no update");
         }
         // Default case, there is a better score at a new location. Check whether it is reasonable
         // that we could have walked there in the time since the current location was recorded.
@@ -223,30 +240,37 @@ public class RecordForLocation implements SensorEventListener {
             // Find the distance to the position with the best score
             double timeToThere = storedLocationInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
 
-            if (timeToThere < (offset - bestFitTime)) {
+            if (timeToThere < elapsedTime) {
                 updatePos = true;
-                Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                //Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
             else {
-                Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                //Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
         }
         // Criteria met for position to be updated.
         if (updatePos) {
-            bestFitTime = offset;
-            bestFitX = storedLocationInfo.getXAt(maxIndex);
-            bestFitY = storedLocationInfo.getYAt(maxIndex);
-            bestFitIndex = maxIndex;
-            storedLocationInfo.setCurrent(bestFitIndex);
-            storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+            updateBestFit(maxIndex);
+        }
+    }
 
-            if (callingActivity.GetLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
-                //Log.d(TAG, "Level changed to " + storedLocationInfo.storedLocationInfo.get(maxIndex).level);
-                bestFitLevel = storedLocationInfo.getLevelAt(maxIndex);
-                SetLevelOnUIThread(bestFitLevel);
-                currentX = bestFitX; // Circle does not need to drift accross levels.
-                currentY = bestFitY;
-            }
+    private void updateBestFit(int maxIndex)
+    {
+        bestFitTime = offset;
+        //currentX = bestFitX; // Don't fall too far behind
+        //currentY = bestFitY;
+        bestFitX = storedLocationInfo.getXAt(maxIndex);
+        bestFitY = storedLocationInfo.getYAt(maxIndex);
+        bestFitIndex = maxIndex;
+        bestFitScore = storedLocationInfo.getScoreAt(bestFitIndex);
+        storedLocationInfo.setCurrent(bestFitIndex);
+        storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+
+        if (callingActivity.GetLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
+            bestFitLevel = storedLocationInfo.getLevelAt(maxIndex);
+            SetLevelOnUIThread(bestFitLevel);
+            currentX = bestFitX; // Circle does not need to drift accross levels.
+            currentY = bestFitY;
         }
     }
 
@@ -273,12 +297,13 @@ public class RecordForLocation implements SensorEventListener {
         });
     }
 
-    private void UpdateOnUIThread(final List<String> scores, final float bestGuessX, final float bestGuessY)
+    private void UpdateOnUIThread(final List<String> scores, final float currentX, final float currentY,
+                                  final float bestGuessX, final float bestGuessY, final float bestGuessRadius)
     {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateLocateProgress(scores, bestGuessX, bestGuessY);
+                callingActivity.UpdateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
             }
         });
     }

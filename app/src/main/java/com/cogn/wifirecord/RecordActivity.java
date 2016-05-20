@@ -177,11 +177,15 @@ public class RecordActivity extends Activity
     /**
      * For use by the locator to run on the UI thread.
      * @param scores
+     * @param currentX
+     * @param currentY
      * @param bestGuessX
      * @param bestGuessY
+     * @param bestGuessRadius
      */
-    public void UpdateLocateProgress(List<String> scores, float bestGuessX, float bestGuessY) {
-        floorMapView.UpdateLocateProgress(scores, bestGuessX, bestGuessY);
+    public void UpdateLocateProgress(List<String> scores, float currentX, float currentY,
+                                     float bestGuessX, float bestGuessY, float bestGuessRadius) {
+        floorMapView.UpdateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
     }
 
     public void UpdateMovementStatus(String movementStatus) {
@@ -230,11 +234,11 @@ public class RecordActivity extends Activity
             {
                 float pxPerM = 38.0f;
                 float walkingPace =  2.0f; // m/s FAST: 7.6km/h;
-                float errorAccommodationM = 20.0f; // Distance that is allowed to move in zero time
+                float errorAccommodationM = 0.0f; // Distance that is allowed to move in zero time
                 int lengthMovingObs = 3;
                 int minLengthStationaryObs = 5;
                 int maxLengthStationaryObs = 20;
-                boolean updateForSamePos = false;
+                boolean updateForSamePos = true;
                 float stickyMinImprovement = 5.0f; // The amount by which the new score must be better than the last during the sticky period
                 int stickyMaxTime = 3000;
                 return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,

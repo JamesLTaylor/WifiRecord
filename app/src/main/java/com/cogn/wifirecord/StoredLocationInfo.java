@@ -29,7 +29,7 @@ public class StoredLocationInfo {
 
     /**
      * Open a file and read the contents into a new StoredLocationInfo
-     * @param location
+     * @param location used to get the filename where data is stored
      */
     public StoredLocationInfo(String location, ConnectionPoints connectionPoints)
     {
@@ -41,7 +41,7 @@ public class StoredLocationInfo {
             // TODO make an object that will return empty lists
             return;
         }
-        BufferedReader in = null;
+        BufferedReader in;
         try {
             in = new BufferedReader(new FileReader(fileToUse));
             String str;
@@ -117,12 +117,32 @@ public class StoredLocationInfo {
         return fileToUse;
     }
 
-    /**
-     * Sets the scores for the test summary comapered with each of the points in the list.
-     * @param testSummary Map of macId int with a list of [p, mu, sigma] for the observations
+    /** Updates only the scores that are close enough to the current location
+     * Only call after calling {@link #setCurrent(int)}
+     * Sets the scores for the test summary compared with each of the points in the list.
+     * @param testSummary Map of macId int with a list of [p, mu, sigma] for the observation
+     * @param elapsedTimeMS time since last update in ms
+     * @param marginForErrorMS distance that is allowed to travel in zero time to account for
+     *                         possible errors in location
      */
-    public void updateScores(HashMap<Integer, List<Float>> testSummary)
+    public void updateScores(HashMap<Integer, List<Float>> testSummary, double elapsedTimeMS, float marginForErrorMS)
     {
+        double range = (elapsedTimeMS + marginForErrorMS)/1000;
+        for (ReadingSummary summary : summaryList) {
+            if (summary.timeToCurrent<=range) {
+                summary.scoreToLatest = getScore(summary.stats, testSummary);
+            } else
+            {
+                summary.scoreToLatest = -200.0f;
+            }
+        }
+    }
+
+    /**
+     * Update all scores
+     * @param testSummary Map of macId int with a list of [p, mu, sigma] for the observation
+     */
+    public void updateScores(HashMap<Integer, List<Float>> testSummary) {
         for (ReadingSummary summary : summaryList) {
             summary.scoreToLatest = getScore(summary.stats, testSummary);
         }
@@ -164,7 +184,7 @@ public class StoredLocationInfo {
      * Returns the already calcualted scores for the latest observation compared with stored
      * locations on this level.
      *
-     * Scores are calculated by calling {@link #updateScores(HashMap)}
+     * Scores are calculated by calling {@link #updateScores(HashMap, double, float)}
      *
      * @param levelID only gets strings for currently displayed level
      * @return a list strings representing the scores of each the observation comapared to each location.
@@ -173,15 +193,17 @@ public class StoredLocationInfo {
         List<String> scores = new ArrayList<>();
         float maxScore = -1e9f;
         float score;
-        float minX = 0;
-        float minY = 0;
         for (ReadingSummary summary : summaryList) {
             if (summary.level==levelID) {
                 score = summary.scoreToLatest;
                 if (score>maxScore){
                     maxScore = score;
                 }
-                scores.add(String.format(Locale.US, "%.1f", score));
+                if (score>-200) {
+                    scores.add(String.format(Locale.US, "%.1f", score));
+                } else {
+                    scores.add("");
+                }
             }
         }
         ScoresAndBest result = new ScoresAndBest();
@@ -191,10 +213,11 @@ public class StoredLocationInfo {
 
 
     /**
-     * Gets the
-     * @param recordedSummary
-     * @param obsSummary
-     * @return
+     * Measures how different the two observations are.
+     *
+     * @param recordedSummary The wifi details of a recorded observation
+     * @param obsSummary The wifi details of a current observation
+     * @return a value representing how close the two observations are.  Zero is the maximum
      */
     private float getScore(Map<Integer, List<Float>> recordedSummary, Map<Integer, List<Float>> obsSummary) {
         float score = 0;

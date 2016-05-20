@@ -4,6 +4,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import android.os.Debug;
 import android.support.test.espresso.matcher.ViewMatchers;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
@@ -35,9 +36,11 @@ public class RecordActivityTest {
         record.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                Debug.startMethodTracing("calc");
                 //record.SetLocation("Home");
                 record.SetLocation("Greenstone");
                 record.StartLocating(offlineWifiProvider);
+                Debug.stopMethodTracing();
             }
         });
         try {
@@ -45,6 +48,7 @@ public class RecordActivityTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
 
 
     }
