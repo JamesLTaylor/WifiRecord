@@ -46,7 +46,7 @@ public class RecordActivity extends Activity
     private WifiManager wifiManager;
     private static WifiStrengthRecorder wifiRecorder;
     private PreviousRecordings levelsAndPoints;
-    private ReadingSummaryList summaryList;
+    private StoredLocationInfo storedLocationInfo;
     private RecordForLocation locator;
     private int currentLevelID;
     private ScrollImageView.ViewMode viewMode;
@@ -119,7 +119,7 @@ public class RecordActivity extends Activity
             floorMapView.SetState(floorMapViewState);
         }
         levelsAndPoints = new PreviousRecordings(currentPlan);
-        summaryList = new ReadingSummaryList(currentPlan);
+        storedLocationInfo = new StoredLocationInfo(currentPlan, locationConnectionPoints.get(currentPlan));
         SetLevel(levelDescriptionToUse);
     }
 
@@ -131,8 +131,8 @@ public class RecordActivity extends Activity
         if (viewMode==ScrollImageView.ViewMode.LOCATE)
         {
             // TODO: use the old locator with history.
-            locator = new RecordForLocation(getLocationParameters(currentPlan), locationConnectionPoints.get(currentPlan),
-                                            summaryList, this, new WifiScanner(wifiManager, currentPlan));
+            locator = new RecordForLocation(getLocationParameters(currentPlan),
+                    storedLocationInfo, this, new WifiScanner(wifiManager, currentPlan));
             sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
             locator.Start();
         }
@@ -264,8 +264,8 @@ public class RecordActivity extends Activity
 
     public void StartLocating(ProvidesWifiScan wifiScanner){
         SetViewMode(ScrollImageView.ViewMode.LOCATE);
-        locator = new RecordForLocation(getLocationParameters(currentPlan), locationConnectionPoints.get(currentPlan),
-                                        summaryList, this, wifiScanner);
+        locator = new RecordForLocation(getLocationParameters(currentPlan),
+                storedLocationInfo, this, wifiScanner);
         sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         locator.Start();
     }
@@ -366,7 +366,7 @@ public class RecordActivity extends Activity
 
         floorMapView.SetPreviousPoints(
                 levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
-                summaryList.GetXList(currentLevelID), summaryList.GetYList(currentLevelID));
+                storedLocationInfo.getXList(currentLevelID), storedLocationInfo.getYList(currentLevelID));
         floorMapView.invalidate();
 
     }
@@ -387,7 +387,7 @@ public class RecordActivity extends Activity
         // read the files that store previous points
         // TODO: If this ends up being slow do it on another thread.
         levelsAndPoints = new PreviousRecordings(currentPlan);
-        summaryList = new ReadingSummaryList(currentPlan);
+        storedLocationInfo = new StoredLocationInfo(currentPlan, locationConnectionPoints.get(currentPlan));
         SetLevel(floorplans.get(currentPlan).GetDefaultLevel());
     }
 

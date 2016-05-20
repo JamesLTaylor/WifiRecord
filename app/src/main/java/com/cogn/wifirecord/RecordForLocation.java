@@ -20,11 +20,9 @@ import java.util.Map;
  */
 public class RecordForLocation implements SensorEventListener {
     private static final String TAG = "WIFI_LOCATE";
-    private final ReadingSummaryList summaryList;
+    private final StoredLocationInfo storedLocationInfo;
     private RecordActivity callingActivity;
     private ProvidesWifiScan wifiScanner;
-    private ConnectionPoints connectionPoints;
-    private int nearestConnectionIndex;
     private boolean scanRunning = false;
     private long delayMS = 100;
 
@@ -54,16 +52,15 @@ public class RecordForLocation implements SensorEventListener {
     private float pxPerDelay;
 
     public RecordForLocation(){
-        summaryList = null;
+        storedLocationInfo = null;
     }
 
-    public RecordForLocation(Parameters params, ConnectionPoints connectionPoints,
-                             ReadingSummaryList summaryList,
+    public RecordForLocation(Parameters params,
+                             StoredLocationInfo storedLocationInfo,
                              RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
         this.params = params;
-        this.connectionPoints = connectionPoints;
         pxPerDelay = params.walkingPace*params.pxPerM * delayMS/1000;
-        this.summaryList = summaryList;
+        this.storedLocationInfo = storedLocationInfo;
         this.callingActivity = callingActivity;
         this.wifiScanner = wifiScanner;
         mAccel = 0.00f;
@@ -158,7 +155,7 @@ public class RecordForLocation implements SensorEventListener {
                 // Check which direction the bestGuess should move
                 UpdateMarkedLocation(true);
                 // Get the scores to display on the floorMap
-                scores = summaryList.GetScores(callingActivity.GetLevelID()).scores;
+                scores = storedLocationInfo.getScores(callingActivity.GetLevelID()).scores;
             } else {
                 UpdateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
@@ -193,20 +190,13 @@ public class RecordForLocation implements SensorEventListener {
      */
     private void UpdateBestFitFromQueue(ReadingsQueue queue, String description){
         HashMap<Integer, List<Float>> observationSummary;
-        ReadingSummaryList.ReadingSummary locationSummary;
+        StoredLocationInfo.ReadingSummary locationSummary;
 
         // Find the unconstrained best fit
         observationSummary = queue.GetSummary();
-        summaryList.UpdateScores(observationSummary);
-        int maxIndex = -1;
-        float maxScore = -1e9f;
-        for (int i = 0; i<summaryList.summaryList.size(); i++) {
-            locationSummary = summaryList.summaryList.get(i);
-            if (locationSummary.score>maxScore){
-                maxIndex = i;
-                maxScore = locationSummary.score;
-            }
-        }
+        storedLocationInfo.updateScores(observationSummary);
+        int maxIndex = storedLocationInfo.getBestScoreIndex();
+        float maxScore = storedLocationInfo.getScoreAt(maxIndex);
         // Decide if the best fit is good enough to use
 
 
@@ -218,12 +208,12 @@ public class RecordForLocation implements SensorEventListener {
         // At the same place, only consider updating is the score has improved,
         // otherwise we could be on our way to somewhere else and we anchor this point too strongly
         else if (bestFitIndex==maxIndex) {
-            updatePos = maxScore > summaryList.summaryList.get(bestFitIndex).score && params.updateForSamePos;
+            updatePos = maxScore > storedLocationInfo.getScoreAt(bestFitIndex) && params.updateForSamePos;
             Log.d(TAG, "Same place");
         }
         // Have not been at current location long and new location does not offer a significant
-        // impovement.  So don't update.
-        else if (maxScore<(summaryList.summaryList.get(bestFitIndex).score + params.stickyMinImprovement) &&
+        // improvement.  So don't update.
+        else if (maxScore<(storedLocationInfo.getScoreAt(bestFitIndex) + params.stickyMinImprovement) &&
                 (offset-bestFitTime)<=params.stickyMaxTime){
             updatePos = false;
         }
@@ -231,20 +221,7 @@ public class RecordForLocation implements SensorEventListener {
         // that we could have walked there in the time since the current location was recorded.
         else {
             // Find the distance to the position with the best score
-            float x = summaryList.summaryList.get(maxIndex).x;
-            float y = summaryList.summaryList.get(maxIndex).y;
-            int level = summaryList.summaryList.get(maxIndex).level;
-            double dist_px;
-            if (level == bestFitLevel) {
-                dist_px = Math.sqrt((x - bestFitX) * (x - bestFitX) + (y - bestFitY) * (y - bestFitY));
-            } else {
-                float dx0 = connectionPoints.getX(nearestConnectionIndex, bestFitLevel) - bestFitX;
-                float dy0 = connectionPoints.getY(nearestConnectionIndex, bestFitLevel) - bestFitY;
-                float dx1 = connectionPoints.getX(nearestConnectionIndex, level) - x;
-                float dy1 = connectionPoints.getY(nearestConnectionIndex, level) - y;
-                dist_px = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1) + params.pxPerM*10.0;
-            }
-            double timeToThere = (((dist_px / params.pxPerM) - params.errorAccomodationM) / params.walkingPace) * 1000;
+            double timeToThere = storedLocationInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
 
             if (timeToThere < (offset - bestFitTime)) {
                 updatePos = true;
@@ -257,13 +234,15 @@ public class RecordForLocation implements SensorEventListener {
         // Criteria met for position to be updated.
         if (updatePos) {
             bestFitTime = offset;
-            bestFitX = summaryList.summaryList.get(maxIndex).x;
-            bestFitY = summaryList.summaryList.get(maxIndex).y;
+            bestFitX = storedLocationInfo.getXAt(maxIndex);
+            bestFitY = storedLocationInfo.getYAt(maxIndex);
             bestFitIndex = maxIndex;
-            nearestConnectionIndex = connectionPoints.IndexOfClosest(bestFitLevel, bestFitX, bestFitY);
-            if (callingActivity.GetLevelID()!= summaryList.summaryList.get(maxIndex).level) {
-                //Log.d(TAG, "Level changed to " + summaryList.summaryList.get(maxIndex).level);
-                bestFitLevel = summaryList.summaryList.get(maxIndex).level;
+            storedLocationInfo.setCurrent(bestFitIndex);
+            storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+
+            if (callingActivity.GetLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
+                //Log.d(TAG, "Level changed to " + storedLocationInfo.storedLocationInfo.get(maxIndex).level);
+                bestFitLevel = storedLocationInfo.getLevelAt(maxIndex);
                 SetLevelOnUIThread(bestFitLevel);
                 currentX = bestFitX; // Circle does not need to drift accross levels.
                 currentY = bestFitY;

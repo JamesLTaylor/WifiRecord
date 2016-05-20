@@ -1,7 +1,5 @@
 package com.cogn.wifirecord;
 
-import android.util.FloatMath;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -19,20 +17,26 @@ import java.util.Map;
 
 /**
  * A list of averages readings at various locations.
+ * Becomes stateful once it is being used keeping track of the current distances to a selected point
+ *
  */
-public class ReadingSummaryList {
-    public List<ReadingSummary> summaryList;
+public class StoredLocationInfo {
+    private ConnectionPoints connectionPoints;
+    private List<ReadingSummary> summaryList;
     private HashSet<Integer> validMacs;
+    private int nearestConnectionIndex;
+    private int currentIndex;
 
     /**
-     * Open a file and read the contents into a new ReadingSummaryList
+     * Open a file and read the contents into a new StoredLocationInfo
      * @param location
      */
-    public ReadingSummaryList(String location)
+    public StoredLocationInfo(String location, ConnectionPoints connectionPoints)
     {
+        this.connectionPoints = connectionPoints;
         summaryList = new ArrayList<>();
         validMacs = new HashSet<>();
-        File fileToUse = GetMostRecentSummaryFile(location);
+        File fileToUse = getMostRecentSummaryFile(location);
         if (fileToUse==null) {
             // TODO make an object that will return empty lists
             return;
@@ -66,7 +70,7 @@ public class ReadingSummaryList {
         }
     }
 
-    public List<Float> GetXList(int level) {
+    public List<Float> getXList(int level) {
         List<Float> xList = new ArrayList<>();
         for (ReadingSummary summary : summaryList) {
             if (summary.level==level)
@@ -75,7 +79,7 @@ public class ReadingSummaryList {
         return xList;
     }
 
-    public List<Float> GetYList(int level) {
+    public List<Float> getYList(int level) {
         List<Float> yList = new ArrayList<>();
         for (ReadingSummary summary : summaryList) {
             if (summary.level==level)
@@ -84,7 +88,7 @@ public class ReadingSummaryList {
         return yList;
     }
 
-    private File GetMostRecentSummaryFile(String location){
+    private File getMostRecentSummaryFile(String location){
         File locationFolder = new File(DataReadWrite.BaseFolder, location);
         if (!locationFolder.exists()) {
             locationFolder.mkdir();
@@ -117,19 +121,55 @@ public class ReadingSummaryList {
      * Sets the scores for the test summary comapered with each of the points in the list.
      * @param testSummary Map of macId int with a list of [p, mu, sigma] for the observations
      */
-    public void UpdateScores(HashMap<Integer, List<Float>> testSummary)
+    public void updateScores(HashMap<Integer, List<Float>> testSummary)
     {
         for (ReadingSummary summary : summaryList) {
-            summary.score = GetScore(summary.stats, testSummary);
+            summary.scoreToLatest = getScore(summary.stats, testSummary);
         }
     }
 
+    public void setCurrent(int index)
+    {
+        currentIndex = index;
+        nearestConnectionIndex = connectionPoints.IndexOfClosest(getLevelAt(index), getXAt(index), getYAt(index));
+    }
+
+    /** Finds the distance between the point at the current index and all other points.
+     */
+    public void updateDistances(int index, float pxPerM, float walkingPace)
+    {
+        float xFrom = getXAt(index);
+        float yFrom = getYAt(index);
+        int levelFrom = getLevelAt(index);
+        for (ReadingSummary summary : summaryList){
+            float xTo = summary.x;
+            float yTo = summary.y;
+            int levelTo = summary.level;
+            if (levelFrom == levelTo) {
+                summary.distToCurrent = Math.sqrt((xFrom - xTo) * (xFrom - xTo) + (yFrom - yTo) * (yFrom - yTo));
+                summary.timeToCurrent = (summary.distToCurrent/pxPerM) / walkingPace;
+            } else {
+                float dx0 = connectionPoints.getX(nearestConnectionIndex, levelFrom) - xFrom;
+                float dy0 = connectionPoints.getY(nearestConnectionIndex, levelFrom) - yFrom;
+                float dx1 = connectionPoints.getX(nearestConnectionIndex, levelTo) - xTo;
+                float dy1 = connectionPoints.getY(nearestConnectionIndex, levelTo) - yTo;
+                summary.distToCurrent = Math.sqrt(dx0 * dx0 + dy0 * dy0) + Math.sqrt(dx1 * dx1 + dy1 * dy1) + pxPerM*10.0;
+                summary.timeToCurrent = (summary.distToCurrent/pxPerM) / walkingPace;
+            }
+        }
+
+    }
+
     /**
-     * The scores for the latest observation compared with stored locations on this level.
+     * Returns the already calcualted scores for the latest observation compared with stored
+     * locations on this level.
+     *
+     * Scores are calculated by calling {@link #updateScores(HashMap)}
+     *
      * @param levelID only gets strings for currently displayed level
      * @return a list strings representing the scores of each the observation comapared to each location.
      */
-    public ScoresAndBest GetScores(int levelID) {
+    public ScoresAndBest getScores(int levelID) {
         List<String> scores = new ArrayList<>();
         float maxScore = -1e9f;
         float score;
@@ -137,7 +177,7 @@ public class ReadingSummaryList {
         float minY = 0;
         for (ReadingSummary summary : summaryList) {
             if (summary.level==levelID) {
-                score = summary.score;
+                score = summary.scoreToLatest;
                 if (score>maxScore){
                     maxScore = score;
                 }
@@ -150,7 +190,13 @@ public class ReadingSummaryList {
     }
 
 
-    private float GetScore(Map<Integer, List<Float>> recordedSummary, Map<Integer, List<Float>> obsSummary) {
+    /**
+     * Gets the
+     * @param recordedSummary
+     * @param obsSummary
+     * @return
+     */
+    private float getScore(Map<Integer, List<Float>> recordedSummary, Map<Integer, List<Float>> obsSummary) {
         float score = 0;
         float w1 = 1;
         float w2 = 1;
@@ -187,6 +233,40 @@ public class ReadingSummaryList {
 
     }
 
+    public int getBestScoreIndex() {
+        float maxScore = -1e9f;
+        int maxIndex = -1;
+        for (int i = 0; i<summaryList.size(); i++) {
+            ReadingSummary locationSummary = summaryList.get(i);
+            if (locationSummary.scoreToLatest >maxScore){
+                maxIndex = i;
+                maxScore = locationSummary.scoreToLatest;
+            }
+        }
+        return maxIndex;
+    }
+
+    public float getScoreAt(int index) {
+        return summaryList.get(index).scoreToLatest;
+    }
+
+    public float getXAt(int index) {
+        return summaryList.get(index).x;
+    }
+
+    public float getYAt(int index) {
+        return summaryList.get(index).y;
+    }
+
+    public int getLevelAt(int index) {
+        return summaryList.get(index).level;
+    }
+
+    public double getTimeToCurrent(int index) {
+        return summaryList.get(index).timeToCurrent;
+    }
+
+
     /**
      * Container to store the all the scores as well as the location of the best fit
      */
@@ -207,7 +287,9 @@ public class ReadingSummaryList {
         public float y;
         public int level;
         public Map<Integer, List<Float>> stats;
-        public float score;
+        public float scoreToLatest;
+        public double distToCurrent;
+        public double timeToCurrent;
 
         public ReadingSummary(float x, float y, int level)
         {

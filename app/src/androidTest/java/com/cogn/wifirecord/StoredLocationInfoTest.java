@@ -6,10 +6,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class ReadingSummaryListTest extends TestCase {
+public class StoredLocationInfoTest extends TestCase {
     public void testLoad()
     {
-        ReadingSummaryList list = new ReadingSummaryList("greenstone");
+        ConnectionPoints connectionPoints = new ConnectionPoints();
+        connectionPoints.add(0, 530, 320, 1,570, 660);
+        connectionPoints.add(0, 1020, 425, 1,1100, 690);
+        StoredLocationInfo list = new StoredLocationInfo("greenstone",connectionPoints);
 
         HashMap<Integer,List<Float>> testReading = new HashMap<>();
         testReading.put(4, Arrays.asList(0.925f, -64.8648648648648f, 2.95151964672128f));
@@ -111,6 +114,6 @@ public class ReadingSummaryListTest extends TestCase {
         testReading.put(216, Arrays.asList(0.475f, -67.8421052631578f, 3.08243167670448f));
         testReading.put(218, Arrays.asList(0.425f, -82.5294117647058f,  2.0034572195207532f));
 
-        list.UpdateScores(testReading);
+        list.updateScores(testReading);
     }
 }
