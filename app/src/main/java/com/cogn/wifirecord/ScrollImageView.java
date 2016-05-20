@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.FloatMath;
+import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -234,6 +235,13 @@ public class ScrollImageView extends View {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             mCurrentX = event.getX();
             mCurrentY = event.getY();
+            Log.d("SCROLL", "mouse down");
+            return true;
+        }
+        else if (event.getAction()==MotionEvent.ACTION_UP){
+            Log.d("SCROLL", "mouse up");
+            mDeltaX = 0;
+            mDeltaY = 0;
             return true;
         }
         else if (event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -247,6 +255,8 @@ public class ScrollImageView extends View {
             mCurrentX = x;
             mCurrentY = y;
             invalidate();
+            Log.d("SCROLL", "mouse move");
+            return true;
         }
         // Consume event
         return true;
