@@ -3,7 +3,6 @@ package com.cogn.wifirecord;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Environment;
@@ -18,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ThreadFactory;
 
 public class WifiStrengthRecorder {
     private static final String ACTION_RESULTS_WRITTEN = "com.cogn.wifirecord.RESULTS_WRITTEN";
@@ -95,7 +93,7 @@ public class WifiStrengthRecorder {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateRecordProgress(newText);
+                callingActivity.updateRecordProgress(newText);
             }
         });
     }
@@ -105,7 +103,7 @@ public class WifiStrengthRecorder {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.SetScanFinished();
+                callingActivity.setScanFinished();
             }
         });
     }

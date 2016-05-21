@@ -75,7 +75,7 @@ public class RecordForLocation implements SensorEventListener {
     }
 
 
-    private boolean HaveChanged(SparseArray<Float> oldResults, SparseArray<Float> results) {
+    private boolean haveChanged(SparseArray<Float> oldResults, SparseArray<Float> results) {
         if (oldResults==null) return true;
         if (oldResults.size()!=results.size()) return true;
         for (int i = 0; i<oldResults.size(); i++)
@@ -85,7 +85,7 @@ public class RecordForLocation implements SensorEventListener {
         return false;
     }
 
-    private void UpdateMarkedLocation(boolean checkDirection)
+    private void updateMarkedLocation(boolean checkDirection)
     {
         if (prevTime==0){
             prevTime = offset;
@@ -121,7 +121,7 @@ public class RecordForLocation implements SensorEventListener {
 
 
 
-    public void StartScanning(){
+    public void startScanning(){
         resetSinceMoveQueue = false;
         SparseArray<Float> oldResults = null;
         SparseArray<Float> results;
@@ -134,35 +134,35 @@ public class RecordForLocation implements SensorEventListener {
         while (scanRunning){
             offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
             results = wifiScanner.getScanResults(offset);
-            if (HaveChanged(oldResults, results)) {
+            if (haveChanged(oldResults, results)) {
                 // Add the scan to the Queues
-                m_shortQueue.AddNew(offset);
-                if (resetSinceMoveQueue) {
+                m_shortQueue.addNew(offset);
+                if (resetSinceMoveQueue && bestFitIndex<0) {
                     m_sinceMoveQueue.clear();
                     resetSinceMoveQueue = false;
                 }
-                m_sinceMoveQueue.AddNew(offset);
+                m_sinceMoveQueue.addNew(offset);
                 oldResults = results.clone();
                 for (int i = 0; i<results.size(); i++) {
-                    m_shortQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
-                    m_sinceMoveQueue.UpdateEnd(results.keyAt(i), results.valueAt(i));
+                    m_shortQueue.updateEnd(results.keyAt(i), results.valueAt(i));
+                    m_sinceMoveQueue.updateEnd(results.keyAt(i), results.valueAt(i));
                 }
 
                 // Find the best fit location, sets bestFitX and bestFitY
-                UpdateBestFit();
+                updateBestFit();
                 // Check which direction the bestGuess should move
-                UpdateMarkedLocation(true);
+                updateMarkedLocation(true);
                 // Get the scores to display on the floorMap
-                scores = storedLocationInfo.getScores(callingActivity.GetLevelID()).scores;
+                scores = storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
             } else {
-                UpdateMarkedLocation(false); // No new reading, just drift the circle if required.
+                updateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
 
 
-            if (scores!=null)
+            if (scores!=null && !(bestFitIndex<0))
             {
                 float radius = (((offset - bestFitTime)/1000.0f) * params.walkingPace + params.errorAccomodationM) * params.pxPerM;
-                UpdateOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius);
+                setPositionOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius);
             }
 
             try { Thread.sleep(delayMS); }
@@ -173,22 +173,27 @@ public class RecordForLocation implements SensorEventListener {
         }
     }
 
-    private void UpdateBestFit() {
+    private void updateBestFit() {
         //  nothing set yet.
         if (bestFitIndex<0) {
-            storedLocationInfo.updateScores(m_shortQueue.GetSummary());
-            int maxIndex = storedLocationInfo.getBestScoreIndex();
-            updateBestFit(maxIndex);
+            setMovementStatusOnUIThread("Initial scan " + Integer.toString(m_sinceMoveQueue.size()) + "/3" );
+            if (m_sinceMoveQueue.size()>=3) {
+                storedLocationInfo.updateScores(m_sinceMoveQueue.getSummary());
+                int maxIndex = storedLocationInfo.getBestScoreIndex();
+                updateBestFit(maxIndex);
+                currentX = bestFitX; // Circle starts at best fit
+                currentY = bestFitY;
+            }
         }
         // device has not been moving.  Use the long queue.  Should be more accurate
         else if (m_sinceMoveQueue.size()>params.minLengthStationaryObs) {
-            SetMovementStatusOnUIThread("Stationary");
-            UpdateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue");
+            setMovementStatusOnUIThread("Stationary");
+            updateBestFitFromQueue(m_sinceMoveQueue, "m_sinceMoveQueue");
         }
         // device has moved, use the short queue
         else {
-            SetMovementStatusOnUIThread("Moving");
-            UpdateBestFitFromQueue(m_shortQueue, "m_shortQueue");
+            setMovementStatusOnUIThread("Moving");
+            updateBestFitFromQueue(m_shortQueue, "m_shortQueue");
         }
     }
 
@@ -198,14 +203,14 @@ public class RecordForLocation implements SensorEventListener {
      * @param queue which queue to use in makeing the summary.  shortQueue of recent recordings or long one since last move.
      * @param description log which queue is being used
      */
-    private void UpdateBestFitFromQueue(ReadingsQueue queue, String description){
+    private void updateBestFitFromQueue(ReadingsQueue queue, String description){
         HashMap<Integer, List<Float>> observationSummary;
         StoredLocationInfo.ReadingSummary locationSummary;
 
         // Find the unconstrained best fit
-        observationSummary = queue.GetSummary();
+        observationSummary = queue.getSummary();
         double elapsedTime = (offset - bestFitTime);  // Time since the last time that the location was updated
-        storedLocationInfo.updateScores(m_shortQueue.GetSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
+        storedLocationInfo.updateScores(m_shortQueue.getSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
         int maxIndex = storedLocationInfo.getBestScoreIndex();
         float maxScore = storedLocationInfo.getScoreAt(maxIndex);
 
@@ -266,19 +271,19 @@ public class RecordForLocation implements SensorEventListener {
         storedLocationInfo.setCurrent(bestFitIndex);
         storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
 
-        if (callingActivity.GetLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
+        if (callingActivity.getLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
             bestFitLevel = storedLocationInfo.getLevelAt(maxIndex);
-            SetLevelOnUIThread(bestFitLevel);
+            setLevelOnUIThread(bestFitLevel);
             currentX = bestFitX; // Circle does not need to drift accross levels.
             currentY = bestFitY;
         }
     }
 
-    private void SetMovementStatusOnUIThread(final String movementStatus) {
+    private void setMovementStatusOnUIThread(final String movementStatus) {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateMovementStatus(movementStatus);
+                callingActivity.updateMovementStatus(movementStatus);
             }
         });
     }
@@ -288,32 +293,32 @@ public class RecordForLocation implements SensorEventListener {
      * Only use this if there has been a change.
      * @param bestFitLevel - value of floor level.
      */
-    private void SetLevelOnUIThread(final int bestFitLevel) {
+    private void setLevelOnUIThread(final int bestFitLevel) {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.SetLevel(bestFitLevel);
+                callingActivity.setLevel(bestFitLevel);
             }
         });
     }
 
-    private void UpdateOnUIThread(final List<String> scores, final float currentX, final float currentY,
-                                  final float bestGuessX, final float bestGuessY, final float bestGuessRadius)
+    private void setPositionOnUIThread(final List<String> scores, final float currentX, final float currentY,
+                                       final float bestGuessX, final float bestGuessY, final float bestGuessRadius)
     {
         callingActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                callingActivity.UpdateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
+                callingActivity.updateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
             }
         });
     }
 
-    public void Start() {
+    public void start() {
         scanRunning = true;
         Log.d(TAG, "SCAN STARTED");
         new Thread(new Runnable() {
             public void run() {
-                StartScanning();
+                startScanning();
             }
         }).start();
     }
@@ -347,7 +352,7 @@ public class RecordForLocation implements SensorEventListener {
          * that are too far in the past.
          * @param latestTime the time since recording started (in ms)
          */
-        public void AddNew(long latestTime)
+        public void addNew(long latestTime)
         {
             values.addLast(new SparseArray<Float>());
             if (values.size()>maxLength) {
@@ -355,12 +360,12 @@ public class RecordForLocation implements SensorEventListener {
             }
         }
 
-        public void UpdateEnd(Integer macID, Float reading)
+        public void updateEnd(Integer macID, Float reading)
         {
             values.peekLast().put(macID, reading);
         }
 
-        private float GetMean(List<Float> values) {
+        private float getMean(List<Float> values) {
             double total = 0.0;
             for (Float value : values)
                 total += value;
@@ -370,16 +375,16 @@ public class RecordForLocation implements SensorEventListener {
         /**
          * Population standard deviation in case there is only one entry point
          */
-        private float GetStd(List<Float> values) {
+        private float getStd(List<Float> values) {
             double total = 0.0;
-            float mean = GetMean(values);
+            float mean = getMean(values);
             for (Float value : values)
                 total += (value-mean)*(value-mean);
             return (float)Math.sqrt(total/values.size());
         }
 
 
-        public HashMap<Integer, List<Float>> GetSummary() {
+        public HashMap<Integer, List<Float>> getSummary() {
             HashMap<Integer, ArrayList<Float>> aggregate = new HashMap<>();
             for (SparseArray<Float> value : values)
             {
@@ -399,8 +404,8 @@ public class RecordForLocation implements SensorEventListener {
             float sigma;
             for (Map.Entry<Integer, ArrayList<Float>> aggregateEntry : aggregate.entrySet()) {
                 p = aggregateEntry.getValue().size()/values.size();
-                mu = GetMean(aggregateEntry.getValue());
-                sigma = GetStd(aggregateEntry.getValue());
+                mu = getMean(aggregateEntry.getValue());
+                sigma = getStd(aggregateEntry.getValue());
                 summary.put(aggregateEntry.getKey(), new ArrayList<>(Arrays.asList(p, mu, sigma)));
             }
             return summary;
@@ -458,10 +463,6 @@ public class RecordForLocation implements SensorEventListener {
             this.updateForSamePos = updateForSamePos;
             this.stickyMinImprovement = stickyMinImprovement;
             this.stickyMaxTime = stickyMaxTime;
-
-
         }
-
-
     }
 }

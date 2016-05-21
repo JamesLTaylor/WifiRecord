@@ -16,12 +16,12 @@
         android:checked="true"
         android:title="Auto scroll"
         android:showAsAction="never"
-        android:enabled="true"/>
+        android:enabled="false"/>
 
     <item android:id="@+id/menu_reset_location"
         android:title="Reset location"
-        android:showAsAction="ifRoom"
-        android:enabled="true"/>
+        android:showAsAction="never"
+        android:enabled="false"/>
 
     <item android:id="@+id/menu_select_location"
         android:title="Select Location"

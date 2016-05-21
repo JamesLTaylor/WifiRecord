@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -36,6 +35,7 @@ public class ScrollImageView extends View {
     private int mPadding;
     private long startClickTime;
     private ViewMode viewMode;
+    private boolean autoScroll = false;
 
 
     /* Current x and y of the touch */
@@ -48,27 +48,31 @@ public class ScrollImageView extends View {
     private float mDeltaX = 0;
     private float mDeltaY = 0;
 
+    // For both
+    private List<Float> summaryRecordedX = new ArrayList<>();
+    private List<Float> summaryRecordedY = new ArrayList<>();
+    private Paint summaryRecordedPaint;
+
     // For recording
     private Float latestCircleX = null;
     private Float latestCircleY = null;
-    private Paint latestCirclePaint;
     private List<Float> thisSessionRecordedX = new ArrayList<>();
     private List<Float> thisSessionRecordedY = new ArrayList<>();
-    private Paint thisSessionRecordedPaint;
     private List<Float> previousSessionRecordedX = new ArrayList<>();
     private List<Float> previousSessionRecordedY = new ArrayList<>();
+
+    private Paint thisSessionRecordedPaint;
     private Paint previousSessionRecordedPaint;
-    private List<Float> summaryRecordedX = new ArrayList<>();
-    private List<Float> summaryRecordedY = new ArrayList<>();
-    private List<String> summaryScores = new ArrayList<>();
-    private Paint summaryRecordedPaint;
+    private Paint latestCirclePaint;
 
     // For location
+    private List<String> summaryScores = new ArrayList<>();
     private Float currentX = null;
     private Float currentY = null;
     private Float bestGuessX = null;
     private Float bestGuessY = null;
     private Float bestGuessRadius = null;
+
     private Paint bestGuessPaint;
     private Paint currentPaint;
 
@@ -89,7 +93,7 @@ public class ScrollImageView extends View {
          * @param x actual pixel location of click event.  Not device independent version.
          * @param y actual pixel location of click event
          */
-        void MakeRecordMenu(float x, float y);
+        void makeRecordMenu(float x, float y);
     }
 
 
@@ -100,7 +104,23 @@ public class ScrollImageView extends View {
         startTimeMillis = Calendar.getInstance().getTimeInMillis();
     }
 
-    public void SetViewMode(ViewMode viewMode){
+    public void setViewMode(ViewMode viewMode){
+        if (viewMode == ViewMode.RECORD) {
+            summaryScores = new ArrayList<>();
+            currentX = null;
+            currentY = null;
+            bestGuessX = null;
+            bestGuessY = null;
+            bestGuessRadius = null;
+        } else {
+            latestCircleX = null;
+            latestCircleY = null;
+            thisSessionRecordedX = new ArrayList<>();
+            thisSessionRecordedY = new ArrayList<>();
+            previousSessionRecordedX = new ArrayList<>();
+            previousSessionRecordedY = new ArrayList<>();
+        }
+
         this.viewMode = viewMode;
     }
 
@@ -177,7 +197,7 @@ public class ScrollImageView extends View {
 
     }
 
-    private List<Float> MultiplyByDensity(List<Float> newValues){
+    private List<Float> multiplyByDensity(List<Float> newValues){
         if (newValues==null) return null;
         List<Float> result = new ArrayList<>(newValues.size());
         for (int i = 0; i<newValues.size(); i++) {
@@ -190,29 +210,31 @@ public class ScrollImageView extends View {
      * Sets the points that have already been recorded on the current floorplan
      *
      */
-    public void SetPreviousPoints(List<Float> previousSessionRecordedX,
-                             List<Float> previousSessionRecordedY,
-                             List<Float> summaryRecordedX,
-                             List<Float> summaryRecordedY) {
-        this.previousSessionRecordedX = MultiplyByDensity(previousSessionRecordedX);
-        this.previousSessionRecordedY = MultiplyByDensity(previousSessionRecordedY);
-        this.summaryRecordedX = MultiplyByDensity(summaryRecordedX);
-        this.summaryRecordedY = MultiplyByDensity(summaryRecordedY);
+    public void setPreviousPoints(List<Float> previousSessionRecordedX,
+                                  List<Float> previousSessionRecordedY,
+                                  List<Float> summaryRecordedX,
+                                  List<Float> summaryRecordedY) {
+        this.previousSessionRecordedX = multiplyByDensity(previousSessionRecordedX);
+        this.previousSessionRecordedY = multiplyByDensity(previousSessionRecordedY);
+        this.summaryRecordedX = multiplyByDensity(summaryRecordedX);
+        this.summaryRecordedY = multiplyByDensity(summaryRecordedY);
     }
 
     /**
      * Removes the latest circle added
      */
-    public void DeletePoint() {
+    public void deletePoint() {
         latestCircleX = null;
         latestCircleY = null;
         invalidate();
     }
 
+    public void setAutoScroll(boolean autoScroll) {this.autoScroll = autoScroll;}
+
     /**
      * Marks the latest circle as having been recorded
      */
-    public void AddRecordedPoint()
+    public void addRecordedPoint()
     {
         thisSessionRecordedX.add(latestCircleX);
         thisSessionRecordedY.add(latestCircleY);
@@ -220,8 +242,9 @@ public class ScrollImageView extends View {
         latestCircleY = null;
     }
 
-    public void UpdateMovementStatus(String movementStatus) {
+    public void updateMovementStatus(String movementStatus) {
         this.movementStatus = movementStatus;
+        invalidate();
     }
 
 
@@ -247,11 +270,9 @@ public class ScrollImageView extends View {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             latestTouchX = event.getX();
             latestTouchY = event.getY();
-            Log.d("SCROLL", "mouse down");
             return true;
         }
         else if (event.getAction()==MotionEvent.ACTION_UP){
-            Log.d("SCROLL", "mouse up");
             mDeltaX = 0;
             mDeltaY = 0;
             return true;
@@ -267,7 +288,6 @@ public class ScrollImageView extends View {
             latestTouchX = x;
             latestTouchY = y;
             invalidate();
-            Log.d("SCROLL", "mouse move");
             return true;
         }
         // Consume event
@@ -294,7 +314,7 @@ public class ScrollImageView extends View {
                 if (latestCircleX!=null && latestCircleY!=null) {
                     double dist = Math.sqrt(Math.pow(latestCircleX - imageX, 2) + Math.pow(latestCircleY - imageY, 2));
                     if (dist < 50.0) {
-                        recordMenuMaker.MakeRecordMenu(latestCircleX/density, latestCircleY/density);
+                        recordMenuMaker.makeRecordMenu(latestCircleX/density, latestCircleY/density);
                     }
                     else {
                         latestCircleX = imageX;
@@ -396,11 +416,11 @@ public class ScrollImageView extends View {
                 canvas.drawCircle(latestCircleX + mTotalX, latestCircleY + mTotalY, 6 * density, latestCirclePaint);
             }
             // This session circles
-            DrawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
+            drawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
             // Previous session circles
-            DrawCircles(canvas, previousSessionRecordedX, previousSessionRecordedY, previousSessionRecordedPaint);
+            drawCircles(canvas, previousSessionRecordedX, previousSessionRecordedY, previousSessionRecordedPaint);
             // Points with summaries
-            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
+            drawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
             // The current scan progress
             // TODO: Add a nice partially transparant rectangle to hold the update.
             if (scanProgress != null) {
@@ -409,7 +429,7 @@ public class ScrollImageView extends View {
         } else if (viewMode==ViewMode.LOCATE) {
             // put the current location in the middle
             // Repair for any shifting that may have happened on a rotate
-            if (currentX!=null) {
+            if (autoScroll && currentX!=null) {
                 mTotalX = getMeasuredWidth() / 2 - currentX;
                 mTotalY = getMeasuredHeight() / 2 - currentY;
                 if (mTotalX > mPadding)
@@ -425,7 +445,7 @@ public class ScrollImageView extends View {
             canvas.drawBitmap(mImage, mTotalX, mTotalY, imagePaint);
 
             // Points with summaries
-            DrawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
+            drawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
             if (bestGuessX != null && bestGuessY != null) {
                 canvas.drawCircle(bestGuessX + mTotalX, bestGuessY + mTotalY, bestGuessRadius * density, bestGuessPaint);
             }
@@ -459,7 +479,7 @@ public class ScrollImageView extends View {
      * Add a set of circles to the image.
      * TODO: Only display circles that are in view.
      */
-    private void DrawCircles(Canvas canvas, List<Float> x, List<Float> y, Paint paint){
+    private void drawCircles(Canvas canvas, List<Float> x, List<Float> y, Paint paint){
         if (x!=null && y!=null) {
             Iterator<Float> xIter = x.iterator();
             Iterator<Float> yIter = y.iterator();
@@ -469,7 +489,7 @@ public class ScrollImageView extends View {
         }
     }
 
-    private float[] ListToArray(List<Float> list)
+    private float[] listToArray(List<Float> list)
     {
         float[] array = new float[list.size()];
         for (int i = 0; i<list.size(); i++)
@@ -479,7 +499,7 @@ public class ScrollImageView extends View {
         return array;
     }
 
-    private ArrayList<Float> ArrayToList(float[] array)
+    private ArrayList<Float> arrayToList(float[] array)
     {
         ArrayList<Float> list = new ArrayList<>();
         for (float value : array)
@@ -489,17 +509,17 @@ public class ScrollImageView extends View {
         return list;
     }
 
-    public Bundle GetState()
+    public Bundle getState()
     {
         Bundle state = new Bundle();
         if (latestCircleX!=null) {
             state.putFloat("latestCircleX", latestCircleX);
             state.putFloat("latestCircleY", latestCircleY);
         }
-        state.putFloatArray("thisSessionRecordedX", ListToArray(thisSessionRecordedX));
-        state.putFloatArray("thisSessionRecordedY", ListToArray(thisSessionRecordedY));
-        state.putFloatArray("summaryRecordedX", ListToArray(summaryRecordedX));
-        state.putFloatArray("summaryRecordedY", ListToArray(summaryRecordedY));
+        state.putFloatArray("thisSessionRecordedX", listToArray(thisSessionRecordedX));
+        state.putFloatArray("thisSessionRecordedY", listToArray(thisSessionRecordedY));
+        state.putFloatArray("summaryRecordedX", listToArray(summaryRecordedX));
+        state.putFloatArray("summaryRecordedY", listToArray(summaryRecordedY));
         state.putFloat("mTotalX", mTotalX);
         state.putFloat("mTotalY", mTotalY);
         state.putSerializable("viewMode", viewMode);
@@ -507,7 +527,7 @@ public class ScrollImageView extends View {
         return state;
     }
 
-    public void SetState(Bundle state)
+    public void setState(Bundle state)
     {
         if (state.containsKey("latestCircleX")) {
             latestCircleX = state.getFloat("latestCircleX");
@@ -516,10 +536,10 @@ public class ScrollImageView extends View {
             latestCircleX = null;
             latestCircleY = null;
         }
-        thisSessionRecordedX = ArrayToList(state.getFloatArray("thisSessionRecordedX"));
-        thisSessionRecordedY = ArrayToList(state.getFloatArray("thisSessionRecordedY"));
-        summaryRecordedX = ArrayToList(state.getFloatArray("summaryRecordedX"));
-        summaryRecordedY = ArrayToList(state.getFloatArray("summaryRecordedY"));
+        thisSessionRecordedX = arrayToList(state.getFloatArray("thisSessionRecordedX"));
+        thisSessionRecordedY = arrayToList(state.getFloatArray("thisSessionRecordedY"));
+        summaryRecordedX = arrayToList(state.getFloatArray("summaryRecordedX"));
+        summaryRecordedY = arrayToList(state.getFloatArray("summaryRecordedY"));
         mTotalX = state.getFloat("mTotalX");
         mTotalY = state.getFloat("mTotalY");
         viewMode = (ViewMode)state.getSerializable("viewMode");
@@ -528,7 +548,7 @@ public class ScrollImageView extends View {
     /**
      * Show the progress of the current scan on the map.
      */
-    public void UpdateRecordProgress(String newText) {
+    public void updateRecordProgress(String newText) {
         scanProgress = newText;
         invalidate();
     }
@@ -540,7 +560,7 @@ public class ScrollImageView extends View {
      * @param bestGuessX location of best guess in pixels on original image.
      * @param bestGuessY location of best guess in pixels on original image.
      */
-    public void UpdateLocateProgress(List<String> summaryScores,float currentX, float currentY,
+    public void updateLocateProgress(List<String> summaryScores, float currentX, float currentY,
                                      float bestGuessX, float bestGuessY, float bestGuessRadius) {
         this.summaryScores = summaryScores;
         this.currentX = currentX*density;
@@ -552,9 +572,9 @@ public class ScrollImageView extends View {
         invalidate();
     }
 
-    public void SetScanFinished() {
+    public void setRecordScanFinished() {
         scanProgress = null;
-        AddRecordedPoint();
+        addRecordedPoint();
         invalidate();
     }
 }
