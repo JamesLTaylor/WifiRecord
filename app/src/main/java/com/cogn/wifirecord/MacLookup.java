@@ -22,11 +22,24 @@ public class MacLookup {
 
     public MacLookup(String location)
     {
+        String folderName = "WifiRecord/"+location;
+        String fileName = location.toLowerCase().trim() + "_macs.txt";
+        init(folderName, fileName);
+    }
+
+    public MacLookup(String location, String fileName)
+    {
+        String folderName = "WifiRecord/"+location;
+        init(folderName, fileName);
+    }
+
+    private void init(String folderName, String filename)
+    {
         macs = new ArrayList<String>();
         ids = new ArrayList<Integer>();
         ssids = new ArrayList<String>();
-        File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord/"+location);
-        file = new File(folder, location.toLowerCase().trim() + "_macs.txt");
+        File folder = new File(Environment.getExternalStorageDirectory(), folderName);
+        file = new File(folder, filename);
         if (!folder.exists()) {
             folder.mkdirs();
         }
@@ -54,7 +67,6 @@ public class MacLookup {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     public Integer GetId(String mac, String ssid){

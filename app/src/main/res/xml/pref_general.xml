@@ -1,9 +1,14 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom="http://schemas.android.com/apk/res/com.cogn.wifirecord">
 
-    <!-- NOTE: Hide buttons to simplify the UI. Users can touch outside the dialog to
-     dismiss it. -->
-    <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
-    <ListPreference
+    <com.cogn.wifirecord.EditTextPreferenceWithSummary
+        android:defaultValue=""
+        android:key="@string/key_general_device_name"
+        android:title="Device name"
+        custom:summary_format="@string/summary_general_device_name">
+    </com.cogn.wifirecord.EditTextPreferenceWithSummary>
+
+<ListPreference
         android:defaultValue="5"
         android:entries="@array/pref_number_of_scans"
         android:entryValues="@array/pref_number_of_scans"

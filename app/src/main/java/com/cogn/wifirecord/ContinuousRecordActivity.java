@@ -1,15 +1,19 @@
 package com.cogn.wifirecord;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.TextView;
 
@@ -25,36 +29,78 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class ContinuousRecordActivity extends Activity{
+public class ContinuousRecordActivity extends Activity
+        implements DialogInterface.OnDismissListener, DialogInterface.OnKeyListener, DialogInterface.OnCancelListener
+{
 
     private static final String TAG = "CONTINUOUS RECORD";
     private long startTimeMillis;
     private int counter;
-    private boolean scanRunning;
+    private static boolean scanRunning;
     private WifiManager wifiManager;
     private MacLookup macLookup;
     private String location;
+    private String deviceName;
+
+    private static String filename;
+    private static TextView textView;
+    private static String macName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_continuous_record);
+        textView = (TextView)findViewById(R.id.continuous_update_info);
         Intent myIntent = getIntent();
         location = myIntent.getStringExtra("location");
-        wifiManager = (WifiManager)this.getSystemService(Context.WIFI_SERVICE);
-        macLookup = new MacLookup(location);
-        Start();
+        wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+        deviceName = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_general_device_name), "");
+        if (deviceName.length() < 4) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setPositiveButton("OK", null);
+            builder.setTitle("Error");
+            builder.setMessage("Device name not set.  Please set a name of at least 3 characters under Settings->General");
+            builder.setOnDismissListener(this);
+            builder.setOnKeyListener(this);
+            builder.setOnCancelListener(this);
+            builder.show();
+            //finish();
+            return;
+        }
+        if (savedInstanceState==null) {
+            String scanStartTime = DataReadWrite.timeStampFormat.format(Calendar.getInstance().getTime());
+            filename = location.toLowerCase().trim() + "_path_"+deviceName+"_" + scanStartTime +".txt";
+            macName = location.toLowerCase().trim() + "_macs_"+deviceName+"_" + scanStartTime +".txt";
+            macLookup = new MacLookup(location, macName);
+            Start();
+        } else {
+            macName = savedInstanceState.getString("macName");
+            filename = savedInstanceState.getString("filename");
+            macLookup = new MacLookup(location, macName);
+        }
+
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Stop();
+        if (isFinishing()) {
+            Stop();
+        } else {
+            //It's an orientation change.
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("filename", filename);
+        outState.putString("macName", macName);
     }
 
     @Override
@@ -66,8 +112,7 @@ public class ContinuousRecordActivity extends Activity{
 
     public void UpdateResults(String value)
     {
-        TextView view = (TextView)findViewById(R.id.continuous_update_info);
-        view.setText(value);
+        textView.setText(value);
     }
 
     private void WriteToUIThread(final String newText)
@@ -106,13 +151,12 @@ public class ContinuousRecordActivity extends Activity{
 
     private void StartScanning() {
         Calendar c = Calendar.getInstance();
-        String scanStartTime = DataReadWrite.timeStampFormat.format(c.getTime());
         // Make the file and folders
         File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord/"+location);
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        File file = new File(folder, location.toLowerCase().trim() + "_continuous_" + scanStartTime +".txt");
+        File file = new File(folder, filename);
         try {
             file.createNewFile();
             BufferedWriter filewriter = new BufferedWriter(new FileWriter(file, true));
@@ -168,6 +212,23 @@ public class ContinuousRecordActivity extends Activity{
             }
             wifiManager.startScan();
         }
+        // Scan finished.  Take a copy of the macs.
+
     }
 
+    @Override
+    public void onDismiss(DialogInterface dialog) {
+        finish();
+    }
+
+    @Override
+    public void onCancel(DialogInterface dialog) {
+        finish();
+    }
+
+    @Override
+    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+        dialog.dismiss();
+        return false;
+    }
 }

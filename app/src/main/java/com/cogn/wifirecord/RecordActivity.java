@@ -272,7 +272,16 @@ public class RecordActivity extends Activity
 
     }
 
+    /**
+     * Implemented outside where the button is pressed so that tests can also access it.
+     */
     public void startLocating(ProvidesWifiScan wifiScanner){
+        MenuItem menuItem = optionsMenu.findItem(R.id.menu_auto_scroll);
+        menuItem.setEnabled(true);
+        boolean autoScroll = menuItem.isChecked();
+        floorMapView.setAutoScroll(autoScroll);
+        optionsMenu.findItem(R.id.menu_reset_location).setEnabled(true);
+        optionsMenu.findItem(R.id.menu_reset_location).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         setViewMode(ScrollImageView.ViewMode.LOCATE);
         locator = new RecordForLocation(getLocationParameters(currentPlan),
                 storedLocationInfo, this, wifiScanner);
@@ -295,14 +304,6 @@ public class RecordActivity extends Activity
         switch (item.getItemId()) {
             case R.id.menu_locate: {
                 // Start the locating thread
-
-                MenuItem menuItem = optionsMenu.findItem(R.id.menu_auto_scroll);
-                menuItem.setEnabled(true);
-                boolean autoScroll = menuItem.isChecked();
-                floorMapView.setAutoScroll(autoScroll);
-
-                optionsMenu.findItem(R.id.menu_reset_location).setEnabled(true);
-                optionsMenu.findItem(R.id.menu_reset_location).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
                 startLocating(new WifiScanner(wifiManager, currentPlan));
                 return true;
             }

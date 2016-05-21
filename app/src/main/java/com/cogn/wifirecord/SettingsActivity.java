@@ -151,6 +151,7 @@ public class SettingsActivity extends PreferenceActivity {
             // updated to reflect the new value, per the Android Design
             // guidelines.
             bindPreferenceSummaryToValue(findPreference(getString(R.string.key_number_of_scans)));
+            bindPreferenceSummaryToValue(findPreference(getString(R.string.key_general_device_name)));
         }
 
         @Override

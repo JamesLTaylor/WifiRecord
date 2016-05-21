@@ -27,7 +27,7 @@ public class RecordActivityTest {
         //onView(ViewMatchers.withId(R.id.recordLayout)).perform(click());
         final RecordActivity record = mActivityRule.getActivity();
         //InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.home_continuous_20160515_070226);
-        InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.greenstone_continuous_20160511_130351);
+        InputStream inputStream = record.getBaseContext().getResources().openRawResource(R.raw.greenstone_path_tablet_20160518_121059);
         final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
         long totalRecordingTime = offlineWifiProvider.getTotalRecordingTime();
         SparseArray<Float> scan = offlineWifiProvider.getScanResults(0);

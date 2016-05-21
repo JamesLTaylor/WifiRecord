@@ -20,10 +20,12 @@
     <string name="key_location_update_same_place">key_location_update_same_place</string>
     <string name="key_location_sticky_min_improvement">key_location_sticky_min_improvment</string>
     <string name="key_location_sticky_max_time">key_location_sticky_max_time</string>
+    <string name="key_general_device_name">key_general_device_name</string>
 
     <string name="summary_location_walking_pace">Used to decide if the most likely location could have been reached from the current location.(%s m/s)</string>
     <string name="summary_location_error_accommodation">Distance that can be moved in zero time, accommodates for the possible error in the current location. (%s m)</string>
     <string name="summary_location_sticky_max_time">Amount of time for which small improvements will be ignored. (%s ms)</string>
     <string name="summary_location_sticky_min_improvement">Minimum score improvement to update while sticky. (%s)</string>
+    <string name="summary_general_device_name">The name used in recorded file names, currently set to: %s</string>
 
 </resources>
