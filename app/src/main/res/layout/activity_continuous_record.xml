@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:keepScreenOn="true"
     tools:context="com.cogn.wifirecord.ContinuousRecordActivity">
 
 
@@ -11,13 +12,33 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true">
+        android:layout_alignParentStart="true"
+        android:id="@+id/continuous_record_layout">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Scan description:"
+            android:textStyle="bold"/>
+
+        <com.cogn.wifirecord.InstantAutoComplete
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:id="@+id/continuous_record_description">
+            <!--android:completionThreshold="0"-->
+        </com.cogn.wifirecord.InstantAutoComplete>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:id = "@+id/continuous_record_start"
+            android:text ="Start"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Updates to follow shortly"
-            android:id="@+id/continuous_update_info"
+            android:text="Scanning..."
+            android:id="@+id/continuous_record_info"
             android:layout_gravity="center_horizontal"
             android:clickable="true"/>
 

@@ -41,6 +41,17 @@
         android:showAsAction="never"
     />
 
+    <item android:id="@+id/menu_test"
+        android:title="Test/simulate"
+        android:showAsAction="never">
+        <menu>
+            <item android:id="@+id/form1"
+                android:title="Path 1"/>
+            <item android:id="@+id/form2"
+                android:title="Path 2"/>
+        </menu>
+    </item>
+
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"
