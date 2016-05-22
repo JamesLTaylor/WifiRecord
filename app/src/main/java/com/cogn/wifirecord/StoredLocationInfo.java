@@ -224,21 +224,25 @@ public class StoredLocationInfo {
         float w1 = 1;
         float w2 = 1;
         float w3 = 2;
+        float tol = 10;
+        float mult = 20;
         float totalWeighting = 0;
         for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
             float recordedMean = recordedEntry.getValue().get(1);
             float p = recordedEntry.getValue().get(0);
-            totalWeighting += w2 * p * Math.abs(-90-recordedMean);
+            totalWeighting += w2 * p;
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
                 float obsMean = obsSummary.get(recordedEntry.getKey()).get(1);
                 float d = Math.abs(recordedMean - obsMean);
-                d = Math.max(0, d-2);
+                d = Math.max(0, d-tol);
                 score -= w1 * d * p;
             } else {
                 // in fingerprint but not in obs
                 if (recordedMean > -90) {
-                    score -= w2 * p * Math.abs(-90 - recordedMean);
+                    float d = Math.abs(-90 - recordedMean);
+                    d = Math.max(0, d-tol);
+                    score -= w2 * p * d;
                 }
             }
         }
@@ -248,11 +252,13 @@ public class StoredLocationInfo {
                 float obsP = obsEntry.getValue().get(0);
                 float obsMean = obsEntry.getValue().get(1);
                 if (obsMean > -90) {
-                    score -= w3 * obsP * Math.abs(-90 - obsMean);
+                    float d = Math.abs(-90 - obsMean);
+                    d = Math.max(0, d-tol);
+                    score -= w3 * obsP * d;
                 }
             }
         }
-        return 100.0f*score/totalWeighting;
+        return mult*score/totalWeighting;
 
     }
 
