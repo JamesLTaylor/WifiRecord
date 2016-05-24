@@ -19,14 +19,27 @@
             android:layout_height="wrap_content"
             android:text="Scan description:"
             android:textStyle="bold"/>
+        <Spinner
+            android:id="@+id/continuous_record_path_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></Spinner>
 
-        <com.cogn.wifirecord.InstantAutoComplete
+        <Switch
+            android:id="@+id/continuous_record_direction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:textOff="Backwards"
+            android:textOn="Forwards"
+            android:checked="true"></Switch>
+
+        <!--<com.cogn.wifirecord.InstantAutoComplete
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="10dp"
             android:id="@+id/continuous_record_description">
-            <!--android:completionThreshold="0"-->
-        </com.cogn.wifirecord.InstantAutoComplete>
+            android:completionThreshold="0"
+        </com.cogn.wifirecord.InstantAutoComplete>-->
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

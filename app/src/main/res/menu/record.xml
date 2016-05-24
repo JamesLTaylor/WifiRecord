@@ -45,9 +45,9 @@
         android:title="Test/simulate"
         android:showAsAction="never">
         <menu>
-            <item android:id="@+id/form1"
+            <item android:id="@+id/test_path1"
                 android:title="Path 1"/>
-            <item android:id="@+id/form2"
+            <item android:id="@+id/test_path2"
                 android:title="Path 2"/>
         </menu>
     </item>

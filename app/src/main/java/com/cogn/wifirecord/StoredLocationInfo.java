@@ -1,10 +1,14 @@
 package com.cogn.wifirecord;
 
+import android.content.Context;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,21 +33,14 @@ public class StoredLocationInfo {
 
     /**
      * Open a file and read the contents into a new StoredLocationInfo
-     * @param location used to get the filename where data is stored
      */
-    public StoredLocationInfo(String location, ConnectionPoints connectionPoints)
+    public StoredLocationInfo(ConnectionPoints connectionPoints, InputStream summaryResourceStream)
     {
         this.connectionPoints = connectionPoints;
         summaryList = new ArrayList<>();
         validMacs = new HashSet<>();
-        File fileToUse = getMostRecentSummaryFile(location);
-        if (fileToUse==null) {
-            // TODO make an object that will return empty lists
-            return;
-        }
-        BufferedReader in;
+        BufferedReader in = new BufferedReader(new InputStreamReader(summaryResourceStream));
         try {
-            in = new BufferedReader(new FileReader(fileToUse));
             String str;
             ReadingSummary summary = null;
             while ((str = in.readLine()) != null) {
@@ -63,8 +60,6 @@ public class StoredLocationInfo {
                     validMacs.add(id);
                 }
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,35 +81,6 @@ public class StoredLocationInfo {
                 yList.add(summary.y);
         }
         return yList;
-    }
-
-    private File getMostRecentSummaryFile(String location){
-        File locationFolder = new File(DataReadWrite.BaseFolder, location);
-        if (!locationFolder.exists()) {
-            locationFolder.mkdir();
-        }
-        File fileListing[] = locationFolder.listFiles();
-        // Get the newest summary file
-        Date fileDate;
-        Date mostRecentDate = new Date(0);
-        File fileToUse = null;
-        for (File file : fileListing) {
-            String fname = file.getName();
-            String[] parts = fname.substring(0, fname.length()-4).split("_", 3);
-
-            if (parts[1].equals("summary")) {
-                try {
-                    fileDate = DataReadWrite.timeStampFormat.parse(parts[2]);
-                    if (fileDate.after(mostRecentDate)) {
-                        mostRecentDate = fileDate;
-                        fileToUse = file;
-                    }
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return fileToUse;
     }
 
     /** Updates only the scores that are close enough to the current location

@@ -6,12 +6,14 @@ import android.content.Intent;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Environment;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -38,16 +40,21 @@ public class WifiStrengthRecorder {
     private boolean isRecording = false;
 
 
-    public WifiStrengthRecorder(String location, WifiManager wifiManager, Context context, RecordActivity recordActivity)
+    public WifiStrengthRecorder(String location, WifiManager wifiManager, RecordActivity recordActivity)
     {
         callingActivity = recordActivity;
         this.wifiManager = wifiManager;
-        macLookup = new MacLookup(location);
+
+        String deviceName = PreferenceManager.getDefaultSharedPreferences(recordActivity).getString(recordActivity.getString(R.string.key_general_device_name), "");
+        String readingFilename = location.toLowerCase().trim() + "_" + callingActivity.sessionStartTime + "_" + deviceName + "_readings.txt";
+        String macsFilename = location.toLowerCase().trim() + "_" + callingActivity.sessionStartTime + "_" + deviceName + "_macs.txt";
+
+        macLookup = new MacLookup(location, macsFilename);
         File folder = new File(Environment.getExternalStorageDirectory(), "WifiRecord/"+location);
         if (!folder.exists()) {
             folder.mkdirs();
         }
-        file = new File(folder, location.toLowerCase().trim() + "_readings_" + callingActivity.sessionStartTime +".txt");
+        file = new File(folder, readingFilename);
 
         //IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         //WifiScanReceiver receiver = new WifiScanReceiver();

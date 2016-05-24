@@ -14,10 +14,12 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -47,7 +49,6 @@ public class RecordActivity extends Activity
     private String currentPlan;
     private String currentLevel;
     private WifiManager wifiManager;
-    private static WifiStrengthRecorder wifiRecorder;
     private PreviousRecordings levelsAndPoints;
     private StoredLocationInfo storedLocationInfo;
     private RecordForLocation locator;
@@ -98,12 +99,7 @@ public class RecordActivity extends Activity
 
         // WIFI Manager
         wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-        if (wifiRecorder == null) {
-            wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
-        }
-        else {
-            wifiRecorder.SetActivity(this);
-        }
+
 
         // Sensor manager
         sensorMan = (SensorManager)getSystemService(SENSOR_SERVICE);
@@ -125,9 +121,35 @@ public class RecordActivity extends Activity
             floorMapView.setState(floorMapViewState);
         }
         levelsAndPoints = new PreviousRecordings(currentPlan);
-        storedLocationInfo = new StoredLocationInfo(currentPlan, locationConnectionPoints.get(currentPlan));
+        storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         setLevel(levelDescriptionToUse);
     }
+
+    private InputStream getSummaryInputStream() {
+        InputStream inputStream;
+        if (currentPlan.equalsIgnoreCase("greenstone")) {
+            inputStream = getResources().openRawResource(R.raw.greenstone_summary);
+        } else if (currentPlan.equalsIgnoreCase("home")) {
+            inputStream = getResources().openRawResource(R.raw.home_summary);
+        } else {
+            throw new IndexOutOfBoundsException("Not a known location");
+        }
+        return inputStream;
+    }
+
+
+    private InputStream getMacInputStream() {
+        InputStream inputStream;
+        if (currentPlan.equalsIgnoreCase("greenstone")) {
+            inputStream = getResources().openRawResource(R.raw.greenstone_macs);
+        } else if (currentPlan.equalsIgnoreCase("home")) {
+            inputStream = getResources().openRawResource(R.raw.home_macs);
+        } else {
+            throw new IndexOutOfBoundsException("Not a known location");
+        }
+        return inputStream;
+    }
+
 
     @Override
     protected void onResume() {
@@ -138,7 +160,7 @@ public class RecordActivity extends Activity
         {
             // TODO: use the old locator with history.
             locator = new RecordForLocation(getLocationParameters(currentPlan),
-                    storedLocationInfo, this, new WifiScanner(wifiManager, currentPlan));
+                    storedLocationInfo, this, new WifiScanner(wifiManager, getMacInputStream()));
             sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
             locator.start();
         }
@@ -222,6 +244,7 @@ public class RecordActivity extends Activity
     public void makeRecording(final float x, final float y, final int level, final int delay) {
         String nStr = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_number_of_scans), "20");
         final int N = Integer.parseInt(nStr);
+        final WifiStrengthRecorder wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, this);
         new Thread(new Runnable() {
             public void run() {
                 wifiRecorder.MakeRecording(x, y, level, N, delay);
@@ -304,7 +327,7 @@ public class RecordActivity extends Activity
         switch (item.getItemId()) {
             case R.id.menu_locate: {
                 // Start the locating thread
-                startLocating(new WifiScanner(wifiManager, currentPlan));
+                startLocating(new WifiScanner(wifiManager, getMacInputStream()));
                 return true;
             }
             case R.id.menu_record: {
@@ -330,7 +353,7 @@ public class RecordActivity extends Activity
                 locator.Stop();
                 floorMapView.setViewMode(ScrollImageView.ViewMode.RECORD);
                 floorMapView.invalidate();
-                startLocating(new WifiScanner(wifiManager, currentPlan));
+                startLocating(new WifiScanner(wifiManager, getMacInputStream()));
                 return true;
             }
             case R.id.menu_continuous_record: {
@@ -370,10 +393,23 @@ public class RecordActivity extends Activity
                 popupMenu.show(getFragmentManager(), "menu");
                 return true;
             }
+            case R.id.test_path1: {
+                runSimulatedPath();
+                return true;
+            }
             default:
                 return super.onOptionsItemSelected(item);
 
         }
+    }
+
+    private void runSimulatedPath() {
+        InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_continuous_20160511_130140);
+        final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
+        long totalRecordingTime = offlineWifiProvider.getTotalRecordingTime();
+        SparseArray<Float> scan = offlineWifiProvider.getScanResults(0);
+        setLocation("Greenstone");
+        startLocating(offlineWifiProvider);
     }
 
     public void setViewMode(ScrollImageView.ViewMode newMode){
@@ -424,12 +460,11 @@ public class RecordActivity extends Activity
 
     public void setLocation(String value) {
         currentPlan = value;
-        wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, getBaseContext(), this);
 
         // read the files that store previous points
         // TODO: If this ends up being slow do it on another thread.
         levelsAndPoints = new PreviousRecordings(currentPlan);
-        storedLocationInfo = new StoredLocationInfo(currentPlan, locationConnectionPoints.get(currentPlan));
+        storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         SharedPreferences.Editor ed = mPrefs.edit();
         ed.putString("currentPlan", currentPlan);
         ed.commit();

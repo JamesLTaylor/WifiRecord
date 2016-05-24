@@ -14,17 +14,17 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
-import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -44,14 +44,18 @@ public class ContinuousRecordActivity extends Activity
     private String deviceName;
 
     private static String filename;
-    private static TextView textView;
     private static String macName;
     private String description;
+    private Spinner pathName;
+    private Switch forwardBackwardSwitch;
+    private static TextView textView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_continuous_record);
+        pathName = (Spinner)findViewById(R.id.continuous_record_path_name);
+        forwardBackwardSwitch = (Switch)findViewById(R.id.continuous_record_direction);
         textView = (TextView)findViewById(R.id.continuous_record_info);
         Intent myIntent = getIntent();
         location = myIntent.getStringExtra("location");
@@ -74,23 +78,28 @@ public class ContinuousRecordActivity extends Activity
         String[] DESCRIPTIONS = getPathDescriptionsFromFile();
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_dropdown_item_1line, DESCRIPTIONS);
-        AutoCompleteTextView textView = (AutoCompleteTextView)
-                findViewById(R.id.continuous_record_description);
-        textView.setAdapter(adapter);
+        Spinner spinner = (Spinner) findViewById(R.id.continuous_record_path_name);
+        spinner.setAdapter(adapter);
 
         findViewById(R.id.continuous_record_start).setOnClickListener(this);
 
         if (scanRunning) {
-            LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
-            View view = findViewById(R.id.continuous_record_description);
-            layout.removeView(view);
+            //LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
+            //View view = findViewById(R.id.continuous_record_description);
+            //layout.removeView(view);
+            boolean forwardBackwardState = savedInstanceState.getBoolean("forwardBackwardState");
+            forwardBackwardSwitch.setSelected(forwardBackwardState);
+            int pathNamePostion = savedInstanceState.getInt("pathNamePostion");
+            pathName.setSelection(pathNamePostion);
+            pathName.setEnabled(false);
+            forwardBackwardSwitch.setEnabled(false);
             findViewById(R.id.continuous_record_start).setEnabled(false);
-            description = savedInstanceState.getString("description");
-            textView.setText(description);
 
         } else if (savedInstanceState!=null) {
-            description = savedInstanceState.getString("description");
-            textView.setText(description);
+            boolean forwardBackwardState = savedInstanceState.getBoolean("forwardBackwardState");
+            forwardBackwardSwitch.setSelected(forwardBackwardState);
+            int pathNamePostion = savedInstanceState.getInt("pathNamePostion");
+            pathName.setSelection(pathNamePostion);
         }
     }
 
@@ -112,7 +121,8 @@ public class ContinuousRecordActivity extends Activity
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString("description", description);
+        outState.putBoolean("forwardBackwardState", forwardBackwardSwitch.isChecked());
+        outState.putInt("pathNamePostion", pathName.getSelectedItemPosition());
         outState.putString("filename", filename);
         outState.putString("macName", macName);
     }
@@ -175,7 +185,9 @@ public class ContinuousRecordActivity extends Activity
             file.createNewFile();
             BufferedWriter filewriter = new BufferedWriter(new FileWriter(file, true));
             filewriter.write("DEVICE," + android.os.Build.BRAND + "," + android.os.Build.MODEL + "\n");
+            String direction = forwardBackwardSwitch.isChecked()?"1":"-1";
             filewriter.write("DESCRIPTION," + description + "\n");
+            filewriter.write("DIRECTION," + direction + "\n");
             filewriter.close();
 
         } catch (IOException ioe)
@@ -249,12 +261,13 @@ public class ContinuousRecordActivity extends Activity
 
     @Override
     public void onClick(View v) {
-        description = ((TextView)findViewById(R.id.continuous_record_description)).getText().toString().toUpperCase();
-        updatePathDescriptionFile(description);
+        description = ((Spinner)findViewById(R.id.continuous_record_path_name)).getSelectedItem().toString().toUpperCase();
+        findViewById(R.id.continuous_record_path_name).setEnabled(false);
+        findViewById(R.id.continuous_record_direction).setEnabled(false);
         findViewById(R.id.continuous_record_start).setEnabled(false);
-        LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
-        View view = findViewById(R.id.continuous_record_description);
-        layout.removeView(view);
+        //LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
+        //View view = findViewById(R.id.continuous_record_description);
+        //layout.removeView(view);
 
         String scanStartTime = DataReadWrite.timeStampFormat.format(Calendar.getInstance().getTime());
         filename = location.toLowerCase().trim() + "_" + scanStartTime + "_" + deviceName + "_path.txt";
@@ -263,59 +276,20 @@ public class ContinuousRecordActivity extends Activity
         start();
     }
 
-    private File getPathDescriptionFile()
-    {
-        String folderName = "WifiRecord/"+location;
-        File folder = new File(Environment.getExternalStorageDirectory(), folderName);
-        String descriptionFilename = location + "_path_descriptions.txt";
-        File file = new File(folder, descriptionFilename);
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException ioe)
-            {
-                Log.e(TAG, "could not make file", ioe);
-                return null;
-            }
-        }
-        return file;
-    }
-
-    private void updatePathDescriptionFile(String description) {
-        boolean found = false;
-        for (String string : getPathDescriptionsFromFile()){
-            if (string.compareToIgnoreCase(description)==0)
-                return;
-        }
-        File file = getPathDescriptionFile();
-        try {
-            BufferedWriter filewriter = new BufferedWriter(new FileWriter(file, true));
-            filewriter.write(description.toUpperCase()+"\n");
-            filewriter.close();
-        } catch (IOException e) {
-            Log.e(TAG, "could not make file", e);
-        }
-    }
-
     private String[] getPathDescriptionsFromFile() {
         List<String> descriptionList = new ArrayList<>();
-
-        BufferedReader in = null;
-        File file = getPathDescriptionFile();
+        InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_path_descriptions);
+        BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
         try {
-            in = new BufferedReader(new FileReader(file));
             String str;
             while ((str = in.readLine()) != null) {
                 descriptionList.add(str);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            in.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         String[] returnArray = new String[descriptionList.size()];
         return descriptionList.toArray(returnArray);
     }

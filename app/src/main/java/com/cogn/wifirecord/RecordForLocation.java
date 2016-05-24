@@ -137,7 +137,7 @@ public class RecordForLocation implements SensorEventListener {
             if (haveChanged(oldResults, results)) {
                 // Add the scan to the Queues
                 m_shortQueue.addNew(offset);
-                if (resetSinceMoveQueue && bestFitIndex<0) {
+                if (resetSinceMoveQueue && bestFitIndex>=0) {
                     m_sinceMoveQueue.clear();
                     resetSinceMoveQueue = false;
                 }

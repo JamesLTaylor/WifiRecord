@@ -1,5 +1,6 @@
 package com.cogn.wifirecord;
 
+import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
 
@@ -10,6 +11,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,25 +22,43 @@ public class MacLookup {
     private List<Integer> ids;
     private List<String> ssids;
     private File file;
+    private boolean updateFile;
 
-    public MacLookup(String location)
+    /**
+     * Mac lookup for locating.  No new macs are added
+     */
+    public MacLookup(InputStream macInputStream)
     {
-        String folderName = "WifiRecord/"+location;
-        String fileName = location.toLowerCase().trim() + "_macs.txt";
-        init(folderName, fileName);
+        updateFile = false;
+        macs = new ArrayList<>();
+        ids = new ArrayList<>();
+        ssids = new ArrayList<>();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(macInputStream));
+        try {
+            String str;
+            while ((str = reader.readLine()) != null) {
+                String[] cols = str.split(",");
+                macs.add(cols[0]);
+                ssids.add(cols[1]);
+                ids.add(Integer.parseInt(cols[2]));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public MacLookup(String location, String fileName)
-    {
-        String folderName = "WifiRecord/"+location;
-        init(folderName, fileName);
-    }
 
-    private void init(String folderName, String filename)
+    /**
+     * Mac lookup for recording, ew macs are added as they are seen
+     */
+    public MacLookup(String location, String filename)
     {
-        macs = new ArrayList<String>();
-        ids = new ArrayList<Integer>();
-        ssids = new ArrayList<String>();
+        updateFile = true;
+        String folderName = "WifiRecord/"+location;
+        macs = new ArrayList<>();
+        ids = new ArrayList<>();
+        ssids = new ArrayList<>();
         File folder = new File(Environment.getExternalStorageDirectory(), folderName);
         file = new File(folder, filename);
         if (!folder.exists()) {
@@ -52,7 +73,7 @@ public class MacLookup {
                 return;
             }
         }
-        BufferedReader in = null;
+        BufferedReader in;
         try {
             in = new BufferedReader(new FileReader(file));
             String str;
@@ -71,26 +92,26 @@ public class MacLookup {
 
     public Integer GetId(String mac, String ssid){
         int pos = macs.indexOf(mac);
-        if (pos>=0)
-        {
+        if (pos>=0) {
             return pos;
-        }
-        else
-        {
+        } else {
             macs.add(mac);
             ssids.add(ssid);
-            BufferedWriter filewriter;
-            try {
-                filewriter = new BufferedWriter(new FileWriter(file, true));
-                filewriter.write(mac + "," + ssid +"," + (macs.size()-1)+"\n");
-                filewriter.close();
-            } catch (IOException e) {
-                Log.e(TAG, "could not make file", e);
-                return -1;
+            if (updateFile) {
+                BufferedWriter filewriter;
+                try {
+                    filewriter = new BufferedWriter(new FileWriter(file, true));
+                    filewriter.write(mac + "," + ssid + "," + (macs.size() - 1) + "\n");
+                    filewriter.close();
+                } catch (IOException e) {
+                    Log.e(TAG, "could not make file", e);
+                    return -1;
+                }
+                return macs.size()-1;
             }
-
-            return macs.size()-1;
+            else  {
+                return 10000+macs.size()-1;
+            }
         }
     }
-
 }

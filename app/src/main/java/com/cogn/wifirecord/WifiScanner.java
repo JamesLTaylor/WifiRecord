@@ -1,9 +1,11 @@
 package com.cogn.wifirecord;
 
+import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.util.SparseArray;
 
+import java.io.InputStream;
 import java.util.List;
 
 
@@ -11,9 +13,9 @@ public class WifiScanner implements ProvidesWifiScan {
     private WifiManager wifiManager;
     private MacLookup macLookup;
 
-    public WifiScanner(WifiManager wifiManager, String location){
+    public WifiScanner(WifiManager wifiManager, InputStream macsInputStream){
         this.wifiManager = wifiManager;
-        this.macLookup = new MacLookup(location);
+        this.macLookup = new MacLookup(macsInputStream);
     }
     @Override
     public SparseArray<Float> getScanResults(long atTime) {

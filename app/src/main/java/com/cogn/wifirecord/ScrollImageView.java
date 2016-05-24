@@ -326,6 +326,8 @@ public class ScrollImageView extends View {
                     latestCircleY = imageY;
                 }
             }
+            mDeltaX = 0;
+            mDeltaY = 0;
             invalidate();
             return true;
         }
@@ -567,7 +569,7 @@ public class ScrollImageView extends View {
         this.currentY = currentY*density;
         this.bestGuessX = bestGuessX*density;
         this.bestGuessY = bestGuessY*density;
-        this.bestGuessRadius = bestGuessRadius*density;
+        this.bestGuessRadius = bestGuessRadius;
 
         invalidate();
     }

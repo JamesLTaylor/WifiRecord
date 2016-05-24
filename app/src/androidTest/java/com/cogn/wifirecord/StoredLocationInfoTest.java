@@ -1,18 +1,24 @@
 package com.cogn.wifirecord;
 
+import android.test.ActivityTestCase;
+
 import junit.framework.TestCase;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class StoredLocationInfoTest extends TestCase {
+public class StoredLocationInfoTest extends ActivityTestCase {
     public void testLoad()
     {
         ConnectionPoints connectionPoints = new ConnectionPoints();
         connectionPoints.add(0, 530, 320, 1,570, 660);
         connectionPoints.add(0, 1020, 425, 1,1100, 690);
-        StoredLocationInfo list = new StoredLocationInfo("greenstone",connectionPoints);
+
+        InputStream summaryResourceStream = getInstrumentation().getContext().getResources().openRawResource(R.raw.greenstone_macs);
+        InputStream summaryResourceStream2 = getInstrumentation().getContext().getResources().openRawResource(R.raw.greenstone_macs);
+        StoredLocationInfo list = new StoredLocationInfo(connectionPoints, summaryResourceStream);
 
         HashMap<Integer,List<Float>> testReading = new HashMap<>();
         testReading.put(4, Arrays.asList(0.925f, -64.8648648648648f, 2.95151964672128f));
