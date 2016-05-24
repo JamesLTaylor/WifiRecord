@@ -1,0 +1,15 @@
+c4:e9:84:2a:0b:2b,TP-LINK_2A0B2B,0
+90:f6:52:48:ee:43,Kalantzis_2,1
+c0:a1:bb:bf:8e:7d,Raphoogy,2
+c0:a0:bb:bf:8e:7c,,3
+84:1b:5e:3d:1e:8a,DO_1E8A,4
+00:04:ed:c5:57:03,Weeks,5
+c0:4a:00:37:95:5a,Mothupi House,6
+00:26:75:ed:7d:93,David Ji,7
+00:18:25:05:a9:e0,,8
+02:15:99:e3:3b:2c,DIRECT-jgCLX-3300 Series,9
+e0:8e:3c:07:c1:1e,NellaBellaHome,10
+00:04:ed:b0:d0:e2,wlan-ap,11
+76:5c:9f:55:e8:cd,Vodafone Smart Tab 3G,12
+00:26:75:fd:0a:f3,Zorbnet,13
+d0:bf:9c:ab:83:51,HP-Print-51-Deskjet 4640 series,13
