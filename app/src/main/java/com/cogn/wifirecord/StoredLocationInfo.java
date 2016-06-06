@@ -25,6 +25,7 @@ import java.util.Map;
  *
  */
 public class StoredLocationInfo {
+    private static final float UNSCORED = -20000f;
     private ConnectionPoints connectionPoints;
     private List<ReadingSummary> summaryList;
     private HashSet<Integer> validMacs;
@@ -99,7 +100,7 @@ public class StoredLocationInfo {
                 summary.scoreToLatest = getScore(summary.stats, testSummary);
             } else
             {
-                summary.scoreToLatest = -200.0f;
+                summary.scoreToLatest = UNSCORED;
             }
         }
     }
@@ -165,7 +166,7 @@ public class StoredLocationInfo {
                 if (score>maxScore){
                     maxScore = score;
                 }
-                if (score>-200) {
+                if (score>UNSCORED) {
                     scores.add(String.format(Locale.US, "%.1f", score));
                 } else {
                     scores.add("");
@@ -188,15 +189,18 @@ public class StoredLocationInfo {
     private float getScore(Map<Integer, List<Float>> recordedSummary, Map<Integer, List<Float>> obsSummary) {
         float score = 0;
         float w1 = 1;
-        float w2 = 1;
+        float w2 = 2;
         float w3 = 2;
         float tol = 10;
         float mult = 20;
+        float pCutOff = 0.9f; // minimum summary probability before we penalize if the mac is missing from the observation
         float totalWeighting = 0;
         for (Map.Entry<Integer, List<Float>> recordedEntry : recordedSummary.entrySet()) {
             float recordedMean = recordedEntry.getValue().get(1);
             float p = recordedEntry.getValue().get(0);
-            totalWeighting += w2 * p;
+            if (p>=pCutOff) {
+                totalWeighting += w2 * p;
+            }
             if (obsSummary.containsKey(recordedEntry.getKey())) {
                 // in fingerprint and in obs
                 float obsMean = obsSummary.get(recordedEntry.getKey()).get(1);
@@ -205,7 +209,7 @@ public class StoredLocationInfo {
                 score -= w1 * d * p;
             } else {
                 // in fingerprint but not in obs
-                if (recordedMean > -90) {
+                if ((recordedMean > -90) && (p>=pCutOff)) {
                     float d = Math.abs(-90 - recordedMean);
                     d = Math.max(0, d-tol);
                     score -= w2 * p * d;

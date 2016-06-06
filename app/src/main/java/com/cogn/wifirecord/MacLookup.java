@@ -50,7 +50,7 @@ public class MacLookup {
 
 
     /**
-     * Mac lookup for recording, ew macs are added as they are seen
+     * Mac lookup for recording, new macs are added as they are seen.
      */
     public MacLookup(String location, String filename)
     {
@@ -90,7 +90,24 @@ public class MacLookup {
         }
     }
 
-    public Integer GetId(String mac, String ssid){
+    public Integer getID(String mac)
+    {
+        return macs.indexOf(mac);
+    }
+
+    public String getMac(Integer id){
+        return macs.get(id);
+    }
+
+
+    /**
+     * Get ID and possibly write to a file.  Writing to a file will be determined by whihc
+     * constructor is used
+     * @param mac media access control address of the router as hex pairs: 01-23-45-67-89-ab
+     * @param ssid the access point (AP) name.
+     * @return the shorthand version/index of the provided mac
+     */
+    public Integer getId(String mac, String ssid){
         int pos = macs.indexOf(mac);
         if (pos>=0) {
             return pos;

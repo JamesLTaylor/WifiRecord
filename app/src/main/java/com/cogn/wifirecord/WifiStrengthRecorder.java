@@ -13,7 +13,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -149,7 +148,7 @@ public class WifiStrengthRecorder {
                     filewriter.write("OFFSET," + offset+"\n");
                     oldScanned = new ArrayList<Integer>();
                     for (ScanResult scan : scanned) {
-                        macID = macLookup.GetId(scan.BSSID, scan.SSID);
+                        macID = macLookup.getId(scan.BSSID, scan.SSID);
                         Log.d(TAG, macID + "," + scan.level+"\n");
                         filewriter.write(macID + "," + scan.level+"\n");
                         oldScanned.add(scan.level);
@@ -195,7 +194,7 @@ public class WifiStrengthRecorder {
                 filewriter.write("OFFSET," + offset+"\n");
                 for (ScanResult scan : scanned) {
                     if (scanBase == 0) scanBase = scan.timestamp;
-                    macID = macLookup.GetId(scan.BSSID, scan.SSID);
+                    macID = macLookup.getId(scan.BSSID, scan.SSID);
                     Log.d(TAG, macID + "," + scan.level+"\n");
                     Log.d(TAG, "age of scan" + (scan.timestamp - scanBase));
                     filewriter.write(macID + "," + scan.level+"\n");

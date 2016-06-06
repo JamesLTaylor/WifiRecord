@@ -218,7 +218,7 @@ public class ContinuousRecordActivity extends Activity
                     results+="OFFSET," + offset + "\n";
                     oldScanned = new ArrayList<Integer>();
                     for (ScanResult scan : scanned) {
-                        macID = macLookup.GetId(scan.BSSID, scan.SSID);
+                        macID = macLookup.getId(scan.BSSID, scan.SSID);
                         Log.d(TAG, macID + "," + scan.level + "\n");
                         filewriter.write(macID + "," + scan.level + "\n");
                         results+=""  + macID + "," + scan.level + "\n";

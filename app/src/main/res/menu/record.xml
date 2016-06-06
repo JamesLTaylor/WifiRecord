@@ -44,12 +44,12 @@
     <item android:id="@+id/menu_test"
         android:title="Test/simulate"
         android:showAsAction="never">
-        <menu>
+        <!--<menu>
             <item android:id="@+id/test_path1"
                 android:title="Path 1"/>
             <item android:id="@+id/test_path2"
                 android:title="Path 2"/>
-        </menu>
+        </menu>-->
     </item>
 
     <item android:id="@+id/action_settings"

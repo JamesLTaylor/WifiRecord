@@ -1,6 +1,5 @@
 package com.cogn.wifirecord;
 
-import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.util.SparseArray;
@@ -22,7 +21,7 @@ public class WifiScanner implements ProvidesWifiScan {
         SparseArray<Float> result = new SparseArray<>();
         List<ScanResult> scanned = wifiManager.getScanResults();
         for (ScanResult scan : scanned) {
-            int macID = macLookup.GetId(scan.BSSID, scan.SSID);
+            int macID = macLookup.getId(scan.BSSID, scan.SSID);
             result.put(macID, (float)scan.level);
         }
         wifiManager.startScan();

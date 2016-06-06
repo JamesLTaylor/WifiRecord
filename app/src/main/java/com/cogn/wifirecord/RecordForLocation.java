@@ -71,7 +71,7 @@ public class RecordForLocation implements SensorEventListener {
 
     public void Stop() {
         scanRunning = false;
-        //Log.d(TAG, "SCAN STOPPED");
+        Log.d(TAG, "SCAN STOPPED");
     }
 
 
@@ -222,14 +222,14 @@ public class RecordForLocation implements SensorEventListener {
             if (maxScore > bestFitScore){
                 if (params.updateForSamePos) {
                     updatePos = true;
-                    //Log.d(TAG, "Same place - update because score improved and settings allow");
+                    Log.d(TAG, "Same place - update because score improved and settings allow");
                 } else {
                     updatePos = false;
-                    //Log.d(TAG, "Same place - not update because improved but settings do not allow");
+                    Log.d(TAG, "Same place - not update because improved but settings do not allow");
                 }
             } else {
                 updatePos = false;
-                //Log.d(TAG, "Same place - not update because not improved score");
+                Log.d(TAG, "Same place - not update because not improved score");
             }
         }
         // Have not been at current location long and new location does not offer a significant
@@ -237,7 +237,7 @@ public class RecordForLocation implements SensorEventListener {
         else if (maxScore<(bestFitScore + params.stickyMinImprovement) &&
                 (offset-bestFitTime)<=params.stickyMaxTime){
             updatePos = false;
-            //Log.d(TAG, "Sticky time no update");
+            Log.d(TAG, "Sticky time no update");
         }
         // Default case, there is a better score at a new location. Check whether it is reasonable
         // that we could have walked there in the time since the current location was recorded.
@@ -247,10 +247,10 @@ public class RecordForLocation implements SensorEventListener {
 
             if (timeToThere < elapsedTime) {
                 updatePos = true;
-                //Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
             else {
-                //Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
         }
         // Criteria met for position to be updated.

@@ -14,7 +14,6 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
@@ -31,7 +30,8 @@ import java.util.Map;
 public class RecordActivity extends Activity
     implements PopupMenuDialogFragment.OptionSetListener,
         ScrollImageView.RecordMenuMaker,
-        SharedPreferences.OnSharedPreferenceChangeListener  {
+        SharedPreferences.OnSharedPreferenceChangeListener
+        {
 
     static final String RO_RECORD = "Record Wifi at this Point";
     static final String RO_DELETE = "Delete this point";
@@ -51,7 +51,7 @@ public class RecordActivity extends Activity
     private WifiManager wifiManager;
     private PreviousRecordings levelsAndPoints;
     private StoredLocationInfo storedLocationInfo;
-    private RecordForLocation locator;
+    private RecordForLocation locator = null;
     private int currentLevelID;
     private ScrollImageView.ViewMode viewMode;
 
@@ -59,10 +59,12 @@ public class RecordActivity extends Activity
     private SensorManager sensorMan;
     private Sensor accelerometer;
     private ScrollImageView.ViewMode savedViewModeToUse;
+    private int REQUEST_CODE_LOAD_TEST = 1000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //TODO : Check SmartNavi
         // Data
         floorplans.put("Greenstone", new FloorPlanImageList());
         floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
@@ -123,6 +125,7 @@ public class RecordActivity extends Activity
         levelsAndPoints = new PreviousRecordings(currentPlan);
         storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         setLevel(levelDescriptionToUse);
+        setViewMode(savedViewModeToUse);
     }
 
     private InputStream getSummaryInputStream() {
@@ -154,15 +157,16 @@ public class RecordActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
-        setViewMode(savedViewModeToUse);
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
         if (viewMode==ScrollImageView.ViewMode.LOCATE)
         {
             // TODO: use the old locator with history.
-            locator = new RecordForLocation(getLocationParameters(currentPlan),
-                    storedLocationInfo, this, new WifiScanner(wifiManager, getMacInputStream()));
-            sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
-            locator.start();
+            if (locator==null) {
+                locator = new RecordForLocation(getLocationParameters(currentPlan),
+                        storedLocationInfo, this, new WifiScanner(wifiManager, getMacInputStream()));
+                sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
+                locator.start();
+            }
         }
     }
 
@@ -204,12 +208,6 @@ public class RecordActivity extends Activity
 
     /**
      * For use by the locator to run on the UI thread.
-     * @param scores
-     * @param currentX
-     * @param currentY
-     * @param bestGuessX
-     * @param bestGuessY
-     * @param bestGuessRadius
      */
     public void updateLocateProgress(List<String> scores, float currentX, float currentY,
                                      float bestGuessX, float bestGuessY, float bestGuessRadius) {
@@ -237,9 +235,6 @@ public class RecordActivity extends Activity
     /**
      *
      * @param x actual pixel location of recording.  screen x needs to adjusted
-     * @param y
-     * @param level
-     * @param delay
      */
     public void makeRecording(final float x, final float y, final int level, final int delay) {
         String nStr = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_number_of_scans), "20");
@@ -316,8 +311,6 @@ public class RecordActivity extends Activity
     /**
      * Item selected in main action bar popupMenu
      *
-     * @param item
-     * @return
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -393,8 +386,11 @@ public class RecordActivity extends Activity
                 popupMenu.show(getFragmentManager(), "menu");
                 return true;
             }
-            case R.id.test_path1: {
-                runSimulatedPath();
+            case R.id.menu_test: {
+                Intent intent = new Intent(this, LoadTestActivity.class);
+                intent.putExtra("location", currentPlan);
+                startActivityForResult(intent, REQUEST_CODE_LOAD_TEST);
+                //runSimulatedPath();
                 return true;
             }
             default:
@@ -403,11 +399,36 @@ public class RecordActivity extends Activity
         }
     }
 
-    private void runSimulatedPath() {
-        InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_continuous_20160511_130140);
-        final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
-        long totalRecordingTime = offlineWifiProvider.getTotalRecordingTime();
-        SparseArray<Float> scan = offlineWifiProvider.getScanResults(0);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_LOAD_TEST && resultCode == RESULT_OK && data != null) {
+            String filename = data.getStringExtra(LoadTestActivity.EXTRA_FILENAME);
+            runSimulatedPath(filename);
+        }
+    }
+
+    /**
+     * Replaces the wifi readings with readings from a file and starts locating
+     */
+    private void runSimulatedPath(String pathFilename) {
+        setViewMode(ScrollImageView.ViewMode.LOCATE);
+        Log.d(TAG,"Getting summary macs");
+        String macFilename = pathFilename.replace("path", "macs");
+        floorMapView.updateMovementStatus("Getting summary macs");
+        MacLookup summaryMacs = new MacLookup(getMacInputStream());
+        Log.d(TAG,"Getting path macs");
+        floorMapView.updateMovementStatus("Getting path macs");
+        MacLookup pathMacs = new MacLookup("Greenstone", macFilename);
+
+        Log.d(TAG,"Processing path");
+        floorMapView.updateMovementStatus("Processing path");
+        final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(pathFilename, "Greenstone" , summaryMacs, pathMacs);
+        //InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_continuous_20160511_130140);
+        //final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
+
+        Log.d(TAG,"Starting simulation");
+        floorMapView.updateMovementStatus("Starting simulation");
         setLocation("Greenstone");
         startLocating(offlineWifiProvider);
     }

@@ -27,5 +27,6 @@
     <string name="summary_location_sticky_max_time">Amount of time for which small improvements will be ignored. (%s ms)</string>
     <string name="summary_location_sticky_min_improvement">Minimum score improvement to update while sticky. (%s)</string>
     <string name="summary_general_device_name">The name used in recorded file names, currently set to: %s</string>
+    <string name="title_activity_load_test">LoadTestActivity</string>
 
 </resources>

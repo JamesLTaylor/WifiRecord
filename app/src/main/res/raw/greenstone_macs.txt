@@ -1,357 +1,344 @@
-c4:e9:84:2a:0b:2b,TP-LINK_2A0B2B,0
-90:f6:52:48:ee:43,Kalantzis_2,1
-c0:a1:bb:bf:8e:7d,Raphoogy,2
-00:04:ed:b0:d0:e2,wlan-ap,3
-2c:e6:cc:87:ba:88,FibreExpo@VAST,4
-2c:e6:cc:07:ba:88,AlwaysOn,5
-2c:e6:cc:47:ba:88,@VAST,6
-2c:e6:cc:48:18:28,@VAST,7
-2c:e6:cc:88:18:28,FibreExpo@VAST,8
-2c:e6:cc:08:18:28,AlwaysOn,9
-2c:e6:cc:89:fd:c8,FibreExpo@VAST,10
-2c:e6:cc:88:b2:b8,FibreExpo@VAST,11
-2c:e6:cc:87:b1:f8,FibreExpo@VAST,12
-00:1d:aa:c9:19:e0,ALWDT1041,13
-2c:e6:cc:8b:3d:d8,FibreExpo@VAST,14
-2c:e6:cc:09:fd:c8,AlwaysOn,15
-2c:e6:cc:49:fd:c8,@VAST,16
-2c:e6:cc:48:b2:b8,@VAST,17
-2c:e6:cc:08:b2:b8,AlwaysOn,18
-2c:e6:cc:47:b1:f8,@VAST,19
-2c:e6:cc:07:b1:f8,AlwaysOn,20
-2c:e6:cc:4b:3d:d8,@VAST,21
-2c:e6:cc:0b:3d:d8,AlwaysOn,22
-c0:a0:bb:be:3d:f6,CARLA,23
-2c:e6:cc:8b:3e:28,FibreExpo@VAST,24
-2c:e6:cc:8b:0a:98,FibreExpo@VAST,25
-0e:18:d6:f5:67:1d,IC_Store,26
-00:04:ed:fc:9f:34,CMGS,27
-2c:e6:cc:0b:39:a8,AlwaysOn,28
-2c:e6:cc:0b:3e:28,AlwaysOn,29
-2c:e6:cc:4b:3e:28,@VAST,30
-2c:e6:cc:4b:0a:98,@VAST,31
-2c:e6:cc:0b:0a:98,AlwaysOn,32
-2c:e6:cc:0b:39:28,AlwaysOn,33
-2c:e6:cc:8b:39:a8,FibreExpo@VAST,34
-88:ce:fa:95:6c:2c,HUAWEI-UEYPKFWG,35
-2c:e6:cc:89:86:08,FibreExpo@VAST,36
-2c:e6:cc:8b:39:28,FibreExpo@VAST,37
-34:64:a9:86:2e:c6,HP-Print-C6-Deskjet 3540 series,38
-2c:e6:cc:89:21:88,FibreExpo@VAST,39
-c0:25:5c:03:0c:b2,v-dealer,40
-c0:25:5c:03:0c:b1,VS-Internet,41
-1c:67:58:dc:cb:b7,HUAWEI-B315-CBB7,42
-2c:e6:cc:4b:39:a8,@VAST,43
-2c:e6:cc:09:86:08,AlwaysOn,44
-2c:e6:cc:49:86:08,@VAST,45
-2c:e6:cc:4b:39:28,@VAST,46
-2c:e6:cc:49:21:88,@VAST,47
-2c:e6:cc:09:21:88,AlwaysOn,48
-c0:25:5c:03:0c:b0,VS-LAN,49
-b0:61:c7:05:db:d8,SBG-1000 sbg1000,50
-2c:e6:cc:87:b9:58,FibreExpo@VAST,51
-2c:e6:cc:07:b9:58,AlwaysOn,52
-2c:e6:cc:47:b9:58,@VAST,53
-00:21:04:41:ba:70,GIGA_41BA77,54
-a4:18:75:65:0c:80,,55
-2c:e6:cc:89:c1:38,FibreExpo@VAST,56
-f8:e7:1e:15:4a:c8,CORICRAFT,57
-0a:18:d6:f5:67:1d,IC_Apple,58
-a4:18:75:b2:16:20,,59
-20:3a:07:06:c4:9a,1 Telkom Guest,60
-0a:15:6d:3a:66:3c,Private,61
-2c:e6:cc:49:c1:33,island-09C130,62
-2c:e6:cc:49:c1:38,@VAST,63
-2c:e6:cc:09:c1:38,AlwaysOn,64
-a4:18:75:b2:2e:60,,65
-5c:0e:8b:c1:c7:53,,66
-0a:18:d6:f5:73:a9,IC_Apple,67
-c8:d3:a3:f2:d7:66,KEX,68
-20:3a:07:06:c4:99,1 Telkom Connect,69
-12:18:d6:f5:67:1d,,70
-0e:18:d6:f5:73:a9,IC_Store,71
-1c:67:58:dc:cb:e4,HUAWEI-B315-CBE4,72
-5c:0e:8b:c1:c7:50,Edcon,73
-c2:9f:db:59:cd:87,InnerCircle,74
-a4:18:75:b2:56:00,,75
-00:26:75:f5:08:0e,Greenstone 3@1,76
-88:dc:96:09:92:58,JimmyJungles,77
-5c:0e:8b:c1:c7:52,,78
-2c:e6:cc:4a:87:b8,@VAST,79
-12:18:d6:f5:73:a9,,80
-2c:e6:cc:87:ba:38,FibreExpo@VAST,81
-2c:e6:cc:07:ba:38,AlwaysOn,82
-2c:e6:cc:47:ba:38,@VAST,83
+00:1d:aa:c9:19:e0,ALWDT1041,0
+c0:a0:bb:be:3d:f6,CARLA,1
+2c:e6:cc:87:b1:f8,FibreExpo@VAST,2
+2c:e6:cc:88:b2:b8,FibreExpo@VAST,3
+2c:e6:cc:8b:3d:d8,FibreExpo@VAST,4
+00:12:0e:69:56:14,GreenstoneMarketing,5
+2c:e6:cc:47:b1:f8,@VAST,6
+2c:e6:cc:07:b1:f8,AlwaysOn,7
+2c:e6:cc:08:b2:b8,AlwaysOn,8
+2c:e6:cc:48:b2:b8,@VAST,9
+2c:e6:cc:0b:3d:d8,AlwaysOn,10
+2c:e6:cc:4b:3d:d8,@VAST,11
+2c:e6:cc:8b:3e:28,FibreExpo@VAST,12
+2c:e6:cc:8b:39:28,FibreExpo@VAST,13
+2c:e6:cc:4b:3e:28,@VAST,14
+2c:e6:cc:0b:3e:28,AlwaysOn,15
+2c:e6:cc:0b:39:28,AlwaysOn,16
+2c:e6:cc:4b:39:28,@VAST,17
+88:dc:96:09:92:58,JimmyJungles,18
+2a:e3:47:bf:1f:2d,GREEN-SRV-01,19
+2c:e6:cc:8b:0a:98,FibreExpo@VAST,20
+a4:18:75:65:0c:80,,21
+2c:e6:cc:87:ba:88,FibreExpo@VAST,22
+2c:e6:cc:88:18:28,FibreExpo@VAST,23
+2c:e6:cc:89:fd:c8,FibreExpo@VAST,24
+2c:e6:cc:8b:39:a8,FibreExpo@VAST,25
+2c:e6:cc:87:b5:38,FibreExpo@VAST,26
+5c:0e:8b:c1:c7:52,,27
+5c:0e:8b:c1:c7:53,,28
+88:ce:fa:80:0a:ac,Greenstone-Wifi,29
+34:64:a9:86:2e:c6,HP-Print-C6-Deskjet 3540 series,30
+88:ce:fa:95:6c:2c,HUAWEI-UEYPKFWG,31
+00:04:ed:fc:9f:34,CMGS,32
+88:ce:fa:95:64:74,Greenstone TDS,33
+2c:e6:cc:47:ba:88,@VAST,34
+2c:e6:cc:07:ba:88,AlwaysOn,35
+2c:e6:cc:08:18:28,AlwaysOn,36
+2c:e6:cc:48:18:28,@VAST,37
+2c:e6:cc:09:fd:c8,AlwaysOn,38
+2c:e6:cc:49:fd:c8,@VAST,39
+2c:e6:cc:0b:39:a8,AlwaysOn,40
+2c:e6:cc:4b:39:a8,@VAST,41
+5c:0e:8b:c1:c7:50,Edcon,42
+84:38:38:fd:a4:e9,AndroidAP,43
+a4:18:75:b2:e0:50,,44
+2c:e6:cc:89:86:08,FibreExpo@VAST,45
+0e:18:d6:f5:67:1d,IC_Store,46
+0c:27:24:6c:53:d0,DW-GRNSTN-WIFI,47
+2c:e6:cc:4b:0a:98,@VAST,48
+2c:e6:cc:0b:0a:98,AlwaysOn,49
+2c:e6:cc:09:86:08,AlwaysOn,50
+2c:e6:cc:49:86:08,@VAST,51
+b0:61:c7:05:db:d8,SBG-1000 sbg1000,52
+2c:e6:cc:87:b9:58,FibreExpo@VAST,53
+1c:67:58:dc:cb:e4,HUAWEI-B315-CBE4,54
+a4:18:75:b2:2e:60,,55
+2c:e6:cc:47:b9:58,@VAST,56
+2c:e6:cc:07:b9:58,AlwaysOn,57
+12:18:d6:f5:67:1d,,58
+2c:e6:cc:4a:87:b3,island-0A87B0,59
+a4:18:75:b2:16:20,,60
+2c:e6:cc:49:21:88,@VAST,61
+0a:18:d6:f5:67:1d,IC_Apple,62
+2c:e6:cc:89:21:88,FibreExpo@VAST,63
+2c:e6:cc:89:12:e8,FibreExpo@VAST,64
+00:19:db:03:24:3b,wlan-ap,65
+2c:e6:cc:09:21:88,AlwaysOn,66
+c0:25:5c:03:0c:b0,VS-LAN,67
+2c:e6:cc:49:12:e8,@VAST,68
+5e:e0:10:f0:9a:42,WIN-3H4UM14IMKV-17650,69
+c0:25:5c:03:0c:b1,VS-Internet,70
+00:21:04:41:ba:70,GIGA_41BA77,71
+12:18:d6:f5:73:a9,,72
+c2:9f:db:59:cd:87,InnerCircle,73
+2c:e6:cc:89:c1:38,FibreExpo@VAST,74
+4a:d9:e7:23:69:2e,Hamleys,75
+f8:e7:1e:15:4a:c8,CORICRAFT,76
+2c:e6:cc:49:c1:33,island-09C130,77
+2c:e6:cc:49:c1:38,@VAST,78
+2c:e6:cc:09:c1:38,AlwaysOn,79
+20:3a:07:06:c4:99,1 Telkom Connect,80
+a8:f7:e0:13:99:3f,BCM,81
+c0:25:5c:03:0c:b2,v-dealer,82
+0a:15:6d:3a:66:3c,Private,83
 2c:e6:cc:47:ba:33,island-07BA30,84
-a8:f7:e0:13:99:3f,BCM,85
-2c:e6:cc:4a:87:b3,island-0A87B0,86
-0c:27:24:6c:53:d0,DW-GRNSTN-WIFI,87
-32:cd:a7:2c:7e:c3,DIRECT-IEM2020 Series,88
-d4:68:4d:4f:03:e8,Rush_Office,89
-2c:e6:cc:0a:87:b8,AlwaysOn,90
-00:12:0e:69:56:14,GreenstoneMarketing,91
-a4:18:75:b2:e0:50,,92
-a4:18:75:9b:c6:b0,,93
-48:ee:0c:d3:be:95,absolute pets,94
-88:ce:fa:95:64:74,Greenstone TDS,95
-2c:e6:cc:8a:87:b8,FibreExpo@VAST,96
-06:15:6d:3a:66:3c,Skyrove Internet,97
+2c:e6:cc:87:ba:38,FibreExpo@VAST,85
+0e:18:d6:f5:73:a9,IC_Store,86
+32:cd:a7:2c:7e:c3,DIRECT-IEM2020 Series,87
+a4:18:75:9b:c6:b0,,88
+20:3a:07:06:c4:9a,1 Telkom Guest,89
+2c:e6:cc:07:ba:38,AlwaysOn,90
+06:15:6d:3a:66:3c,Skyrove Internet,91
+2c:e6:cc:47:ba:38,@VAST,92
+2c:e6:cc:0a:87:b8,AlwaysOn,93
+d4:ca:6d:b0:81:9b,,94
+d6:ca:6d:b0:81:9b,AlwaysOn,95
+48:ee:0c:d3:be:95,absolute pets,96
+c8:d3:a3:f2:d7:66,KEX,97
 2c:e6:cc:09:12:e8,AlwaysOn,98
-d4:ca:6d:b0:81:9b,,99
-2c:e6:cc:0b:3e:c8,AlwaysOn,100
-d6:ca:6d:b0:81:9b,AlwaysOn,101
-4a:d9:e7:23:69:2e,Hamleys,102
-00:1e:2a:10:e1:f7,AVILOB,103
-c6:9f:db:59:cd:87,LUXOTTICA,104
-2c:e6:cc:8b:3e:c8,FibreExpo@VAST,105
-2c:e6:cc:49:12:e8,@VAST,106
+c6:9f:db:59:cd:87,LUXOTTICA,99
+00:1e:2a:10:e1:f7,AVILOB,100
+f8:1a:67:a1:57:64,Private Network PN,101
+d4:68:4d:4f:03:e8,Rush_Office,102
+2c:e6:cc:8a:87:b8,FibreExpo@VAST,103
+0a:18:d6:f5:73:a9,IC_Apple,104
+d6:ca:6d:b0:81:9c,AlwaysOnSmart,105
+2c:e6:cc:4a:87:b8,@VAST,106
 c8:d3:a3:eb:3c:13,default,107
-2c:e6:cc:4b:3e:c8,@VAST,108
-2c:e6:cc:89:12:e8,FibreExpo@VAST,109
-2c:e6:cc:8b:0b:88,FibreExpo@VAST,110
-2c:e6:cc:4b:0b:88,@VAST,111
-2c:e6:cc:0b:0b:88,AlwaysOn,112
-2c:e6:cc:87:b5:38,FibreExpo@VAST,113
-e4:8d:8c:dc:57:51,CUM Books GreenstoneMall,114
-38:20:56:d5:fa:31,OneTelkom,115
-5e:e0:10:f0:9a:42,WIN-3H4UM14IMKV-17650,116
-28:92:4a:a8:83:0f,HP-Print-0F-Officejet 6700,117
+d6:ca:6d:b0:81:9d,@VAST,108
+2c:e6:cc:0b:3e:c8,AlwaysOn,109
+1c:67:58:79:be:65,VodafoneMobileWiFi-BE6573,110
+50:68:0a:51:64:bd,HUAWEI-E5330-64BD,111
+90:94:e4:78:da:e6,,112
+84:b8:02:5c:c7:e0,AlwaysOn@PnP,113
+84:b8:02:6d:27:f0,AlwaysOn@PnP,114
+a4:18:75:b2:56:00,,115
+bc:25:e0:8d:8c:4f,BCM,116
+2c:e6:cc:47:b5:38,@VAST,117
 2c:e6:cc:07:b5:38,AlwaysOn,118
-2c:e6:cc:47:b5:38,@VAST,119
-38:20:56:d5:fa:30,2Net,120
-d0:c7:89:0f:48:c0,DW-GRNSTN-WIFI,121
-ac:36:13:0f:22:bf,FLom-R2VydHJ1ZGU,122
-d6:ca:6d:b0:81:9d,@VAST,123
-00:3a:9a:0c:b6:10,GM-GRE-WIFI,124
-00:3a:9a:0c:b6:11,GM-MAC-WIFI,125
-d6:ca:6d:b0:81:9c,AlwaysOnSmart,126
-2c:e6:cc:8b:38:58,FibreExpo@VAST,127
-2c:e6:cc:4b:38:58,@VAST,128
-2c:e6:cc:0b:38:58,AlwaysOn,129
-8c:bf:a6:a8:86:95,AndroidAP,130
-d0:c7:89:24:90:b0,DW-GRNSTN-WIFI,131
-2a:a4:3c:33:ff:10,MygymLowCost,132
-d4:68:4d:0f:03:e8,AlwaysOn@Rush,133
-2c:e6:cc:48:15:f3,island-0815F0,134
-2c:e6:cc:49:c1:c8,@VAST,135
-f8:1a:67:a1:57:64,Private Network PN,136
-e4:8d:8c:f3:69:1f,Totalsports Free Wi-Fi,137
-2c:e6:cc:47:b3:68,@VAST,138
-2c:e6:cc:89:c1:c8,FibreExpo@VAST,139
-d4:68:4d:8f:03:e8,@VAST,140
-2c:e6:cc:08:b2:e8,AlwaysOn,141
-2c:e6:cc:48:b2:e8,@VAST,142
-1c:e6:c7:1d:6c:7a,1 Telkom Guest,143
-2c:e6:cc:09:c1:c8,AlwaysOn,144
-e8:39:35:f2:6c:d0,,145
-fc:0a:81:03:d2:b0,WimpyGreenStone,146
-2c:e6:cc:48:b2:e3,island-08B2E0,147
-2c:e6:cc:87:b3:68,FibreExpo@VAST,148
-2c:e6:cc:07:b3:68,AlwaysOn,149
-2c:e6:cc:4c:0f:d3,island-0C0FD0,150
-e6:8d:8c:f3:69:1f,TFG Stores Private TR,151
-1c:e6:c7:1d:6c:79,1 Telkom Connect,152
-54:b8:0a:f7:57:7c,CGSC WIFI,153
-e4:8d:8c:f3:5b:05,SODA Bloc Free Wi-Fi,154
-e6:8d:8c:f3:69:21,TFG Stores Private PR,155
-e6:8d:8c:f3:69:20,TFG Stores Private TN,156
-e6:8d:8c:f3:69:22,TFG Stores Private PN,157
-d4:ca:6d:8d:94:2d,ctfmcustomer,158
-02:16:d4:f9:3a:bd,AndroidAP,159
-88:ce:fa:9a:0c:8c,HUAWEI-23P337ZK,160
-2c:e6:cc:08:15:f8,AlwaysOn,161
-d6:ca:6d:c8:14:59,Rush_Office,162
-32:cd:a7:3b:93:1f,DIRECT-qIM2070 Series,163
-00:04:ed:ee:d1:3a,Spilhaus,164
-d4:ca:6d:c8:14:59,,165
-2c:e6:cc:89:21:68,FibreExpo@VAST,166
-2c:e6:cc:09:21:68,AlwaysOn,167
-2c:e6:cc:49:21:68,@VAST,168
-fc:0a:81:05:72:60,WimpyGreenStone,169
-c8:d3:a3:e4:d9:b9,Milky Lane,170
-10:d3:8a:ae:48:3f,AndroidHotspot4137,171
-7c:7d:3d:29:87:5f,HUAWEI-B315-875F,172
-2c:e6:cc:88:b2:e8,FibreExpo@VAST,173
-2c:e6:cc:48:15:f8,@VAST,174
-2c:e6:cc:89:2a:58,FibreExpo@VAST,175
-2c:e6:cc:09:2a:58,AlwaysOn,176
-2c:e6:cc:49:2a:58,@VAST,177
-a4:2b:b0:d2:1d:5e,Steers Debonairs,178
-2c:e6:cc:4c:0f:d8,@VAST,179
-2c:e6:cc:0c:0f:d8,AlwaysOn,180
-00:03:52:ae:4a:d1,G-Connect,181
-e6:8d:8c:f3:5b:08,TFG Stores Private PN,182
-e6:8d:8c:f3:5b:05,TFG Stores Private TR,183
-2c:e6:cc:88:15:f8,FibreExpo@VAST,184
-84:38:38:0e:df:1e,Adil Nalagy,185
-2c:e6:cc:89:99:48,FibreExpo@VAST,186
-2c:e6:cc:49:99:48,@VAST,187
-00:03:52:ae:4a:d0,WirelessG,188
-00:03:52:ae:4a:d3,,189
-00:04:ed:e8:d2:a8,Billion,190
-88:ce:fa:8e:af:08,CGS WIFI,191
-90:94:e4:78:da:e6,,192
-4a:d9:e7:23:68:31,Hamleys,193
-4a:d9:e7:23:68:8e,Hamleys,194
-88:ce:fa:82:ab:2c,HUAWEI-3JS447JA,195
-c4:34:6b:fa:73:76,HP-Print-76-Officejet 7610,196
-b0:5b:67:26:83:1b,VodafoneMobileWiFi-831B68,197
-08:ee:8b:50:10:bd,AndroidAP,198
-a2:63:91:af:ce:11,Battlehouse,199
-0a:bd:43:ab:74:c0,Alila-Guest,200
-f4:f2:6d:2e:e9:4e,TP-LINK_2EE94E,201
-08:bd:43:ab:74:c0,Battlehouse,202
-88:ce:fa:79:b2:7c,Curry Lounge,203
-14:cc:20:94:b8:06,,204
-00:3a:9a:0c:c0:91,GM-MAC-WIFI,205
-a0:2b:b8:72:23:8e,HP-Print-8E-Officejet Pro 8610,206
-9c:d6:43:aa:b3:46,Sorbet Dry Bar,207
-c0:a0:bb:bf:8e:7c,,208
-84:1b:5e:3d:1e:8a,DO_1E8A,209
-36:12:98:2b:c1:89,Rachel's iPad,210
-9e:a9:e4:49:e3:07,VodafoneMobileWiFi-49E307,211
-62:8f:5c:2d:5c:39,DIRECT-,212
-00:19:db:03:24:3b,wlan-ap,213
-f2:79:59:54:62:37,DIRECT-,214
-d8:fe:e3:b6:db:70,Samsung_Telkom,215
-34:4d:f7:38:7c:a7,BtmY-bWFjaGlwaXNhanVuaW9y,216
-d0:5b:a8:b1:a9:01,CPE_B1A901,217
-08:ec:a9:7e:cc:90,Teresa,218
-56:a0:50:9f:16:09,DIRECT-,218
-e6:8d:8c:f3:5b:07,TFG Stores Private PR,220
-cc:b2:55:46:7d:fd,,221
-ec:9b:f3:d5:96:7f,Pee,222
-88:ce:fa:80:0a:ac,Greenstone-Wifi,223
-ac:cf:85:7a:bd:48,VodafoneMobileWiFi-BD4835,224
-fe:8f:90:31:6c:1d,DIRECT-,225
-3c:1e:04:96:41:35,dlink_DWR-730_4135,226
-ee:1d:7f:65:67:6a,VodafoneMobileWiFi-65676A,227
-24:00:ba:fc:53:80,HUAWEI-5380,228
-bc:20:10:73:33:f2,CSC42,229
-00:04:ed:42:ca:70,GALGRNS-WAP,230
-ac:cf:85:7a:c6:1b,VodafoneMobileWiFi-C61B93,231
-68:a0:f6:ed:88:fc,HUAWEI-E5330-88FC,232
-e6:8d:8c:f3:5b:06,TFG Stores Private TN,233
-3e:a1:0d:ed:44:f7,DIRECT-,234
-00:03:52:ae:4a:d2,,235
-6a:05:71:df:96:20,DIRECT-,236
-ee:1d:7f:ef:3d:f2,VodafoneMobileWiFi-EF3DF2,237
-84:55:a5:85:d6:89,android1,238
-3c:cb:7c:0b:ea:97,MTN Internet_EA97,239
-3c:46:d8:24:bf:0d,TP-LINK_M7350_24BF0D,240
-3c:46:d8:9b:9f:78,TP-LINK_9F78,241
-24:c9:a1:1a:69:e8,AlwaysOn,242
-24:c9:a1:5a:69:e8,@VAST,243
-2c:e6:cc:09:99:48,AlwaysOn,244
-24:c9:a1:9a:69:e8,FibreExpo@VAST,245
-2c:e6:cc:8c:0f:d8,FibreExpo@VAST,246
-2c:e6:cc:89:5a:d8,FibreExpo@VAST,247
-2c:e6:cc:8b:7c:88,FibreExpo@VAST,248
-2c:e6:cc:09:27:e8,AlwaysOn,249
-2c:e6:cc:49:27:e8,@VAST,250
-2c:e6:cc:09:5a:d8,AlwaysOn,251
-2c:e6:cc:49:5a:d8,@VAST,252
-00:02:6f:ff:7a:a4,GBSA,253
-2c:e6:cc:4b:7c:88,@VAST,254
-64:a0:e7:db:a0:47,MTN_GUEST2,255
-2c:e6:cc:0a:1b:38,AlwaysOn,256
-e0:8e:3c:04:a0:b2,MyNetworkName,257
-90:94:e4:69:45:4b,8ta_Greenstone,258
-64:a0:e7:db:a0:43,SSID100,259
-00:1a:30:c1:35:a2,voice,260
-2c:e6:cc:4a:1b:38,@VAST,261
-64:a0:e7:db:a0:45,MTN_GUEST,262
+e4:8d:8c:dc:57:51,CUM Books GreenstoneMall,119
+2c:e6:cc:4b:3e:c8,@VAST,120
+2c:e6:cc:4b:38:58,@VAST,121
+2c:e6:cc:0b:38:58,AlwaysOn,122
+2c:e6:cc:8b:38:58,FibreExpo@VAST,123
+2c:e6:cc:8b:3e:c8,FibreExpo@VAST,124
+64:70:02:8a:5e:00,SeeTVKZN,125
+84:b8:02:9d:5d:20,AlwaysOn@PnP,126
+00:04:ed:ee:d1:3a,Spilhaus,127
+2c:e6:cc:49:c1:c8,@VAST,128
+2c:e6:cc:89:c1:c8,FibreExpo@VAST,129
+2c:e6:cc:48:15:f3,island-0815F0,130
+2c:e6:cc:09:c1:c8,AlwaysOn,131
+d4:68:4d:8f:03:e8,@VAST,132
+4a:d9:e7:23:68:31,Hamleys,133
+d4:68:4d:0f:03:e8,AlwaysOn@Rush,134
+7c:7d:3d:29:87:5f,HUAWEI-B315-875F,135
+2c:e6:cc:88:15:f8,FibreExpo@VAST,136
+d6:ca:6d:c8:14:59,Rush_Office,137
+fc:0a:81:05:72:60,WimpyGreenStone,138
+2c:e6:cc:48:15:f8,@VAST,139
+32:cd:a7:3b:93:1f,DIRECT-qIM2070 Series,140
+fc:0a:81:03:d2:b0,WimpyGreenStone,141
+88:ce:fa:9a:0c:8c,HUAWEI-23P337ZK,142
+a4:2b:b0:d2:1d:5e,Steers Debonairs,143
+1c:e6:c7:1d:6c:79,1 Telkom Connect,144
+d4:ca:6d:8d:94:2d,ctfmcustomer,145
+1c:e6:c7:1d:6c:7a,1 Telkom Guest,146
+2c:e6:cc:08:15:f8,AlwaysOn,147
+2c:e6:cc:09:21:68,AlwaysOn,148
+2c:e6:cc:89:21:68,FibreExpo@VAST,149
+e6:8d:8c:f3:69:22,TFG Stores Private PN,150
+e6:8d:8c:f3:69:21,TFG Stores Private PR,151
+e6:8d:8c:f3:69:1f,TFG Stores Private TR,152
+e6:8d:8c:f3:69:20,TFG Stores Private TN,153
+e6:8d:8c:f3:5b:08,TFG Stores Private PN,154
+2c:e6:cc:48:b2:e3,island-08B2E0,155
+e6:8d:8c:f3:5b:05,TFG Stores Private TR,156
+e4:8d:8c:f3:69:1f,Totalsports Free Wi-Fi,157
+00:8e:f2:83:63:26,Casabel1,158
+c8:d3:a3:e4:d9:b9,Milky Lane,159
+00:04:ed:e8:d2:a8,Billion,160
+00:03:52:ae:4a:d3,,161
+2c:e6:cc:4c:0f:d3,island-0C0FD0,162
+d4:ca:6d:c8:14:59,,163
+ac:cf:85:7a:bd:48,VodafoneMobileWiFi-BD4835,164
+2c:e6:cc:89:2a:58,FibreExpo@VAST,165
+2c:e6:cc:49:2a:58,@VAST,166
+2c:e6:cc:87:b3:68,FibreExpo@VAST,167
+e6:8d:8c:f3:5b:06,TFG Stores Private TN,168
+e4:8d:8c:f3:5b:05,SODA Bloc Free Wi-Fi,169
+2c:e6:cc:49:21:68,@VAST,170
+88:ce:fa:8e:af:08,CGS WIFI,171
+2c:e6:cc:07:b3:68,AlwaysOn,172
+2c:e6:cc:48:b2:e8,@VAST,173
+2c:e6:cc:08:b2:e8,AlwaysOn,174
+2c:e6:cc:8c:0f:d8,FibreExpo@VAST,175
+2c:e6:cc:0c:0f:d8,AlwaysOn,176
+2c:e6:cc:4c:0f:d8,@VAST,177
+2c:e6:cc:47:b3:68,@VAST,178
+2c:e6:cc:88:b2:e8,FibreExpo@VAST,179
+e6:8d:8c:f3:5b:07,TFG Stores Private PR,180
+2c:e6:cc:09:2a:58,AlwaysOn,181
+e8:39:35:f2:6c:d0,,182
+cc:b2:55:46:7d:fd,,183
+f8:4f:57:a0:4b:42,v-dealer,184
+2c:e6:cc:89:99:48,FibreExpo@VAST,185
+d6:ca:6d:55:79:71,AlwaysOn@Mugg&Bean,186
+00:02:6f:ff:7a:a4,GBSA,187
+84:78:ac:b9:09:19,1 Telkom Connect,188
+84:78:ac:b9:09:1a,1 Telkom Guest,189
+6c:19:8f:67:ef:ab,GREENSTONE,190
+f8:4f:57:a0:4b:41,VS-Internet,191
+5c:b9:01:6d:39:b0,HP-Print-B0-Deskjet 4640 series,192
+c4:34:6b:0e:b9:1c,HP-Print-1C-Officejet Pro 8620,193
+d4:ca:6d:55:79:71,,194
+d6:ca:6d:55:79:73,@VAST,195
+a8:f7:e0:13:97:9b,BCM,196
+f8:4f:57:a0:4b:40,VS-LAN,197
+00:04:ed:bd:9a:73,Limited Access,198
+c4:3d:c7:6b:33:5a,NETGEAR,199
+d6:ca:6d:55:79:72,AlwaysOnSmart,200
+6c:ad:f8:1d:34:e5,Audimator929C,201
+2c:e6:cc:8b:7c:88,FibreExpo@VAST,202
+2c:e6:cc:4b:7c:83,island-0B7C80,203
+2c:e6:cc:89:27:e8,FibreExpo@VAST,204
+84:b8:02:86:ac:c0,AlwaysOn@PnP,205
+2c:e6:cc:4b:7c:88,@VAST,206
+2c:e6:cc:0b:7c:88,AlwaysOn,207
+26:e5:2a:59:df:56,NETGEAR_EXT,208
+c0:4a:00:37:90:02,CLASSIQUE OPTICAL GREENSTONE,209
+f4:55:9c:12:ce:24,Edgars Greenstone,210
+20:4e:7f:ac:5e:50,Leman,211
+60:e3:27:9f:24:70,VIP_Reg,212
+00:1d:a2:85:e7:d0,,213
+c8:d3:a3:78:02:0e,default,214
+e0:8e:3c:04:a0:b2,MyNetworkName,215
+2c:e6:cc:09:99:48,AlwaysOn,216
+2c:e6:cc:49:99:48,@VAST,217
+2c:e6:cc:89:5a:d8,FibreExpo@VAST,218
+2c:e6:cc:09:27:e8,AlwaysOn,219
+00:18:4d:3a:e6:d4,Matador,220
+00:50:7f:ad:82:68,default,221
+2c:e6:cc:49:27:e8,@VAST,222
+ec:1d:7f:f7:3c:e1,Sausage Saloon,223
+c2:9f:db:ed:5d:1e,InnerCircle,224
+5c:0e:8b:2d:fb:02,,225
+00:19:e0:8f:d4:5a,Digital.MediaNet.CellC,226
+5c:0e:8b:2d:fb:00,Edcon,227
+24:c9:a1:9a:69:e8,FibreExpo@VAST,228
+00:25:84:da:64:30,CellC_Wifi_Hotspot,229
+38:f8:89:47:0d:d6,BCM_DNI,230
+24:c9:a1:5a:69:e8,@VAST,231
+2c:e6:cc:09:5a:d8,AlwaysOn,232
+24:c9:a1:1a:69:e8,AlwaysOn,233
+2c:e6:cc:49:5a:d8,@VAST,234
+00:14:a5:46:f4:d9,GlobeSurfer,235
+9e:a9:e4:cd:d1:96,VodafoneMobileWiFi-CDD196,236
+2c:e6:cc:87:ba:28,FibreExpo@VAST,237
+2c:e6:cc:47:ba:28,@VAST,238
+64:a0:e7:db:a0:43,SSID100,239
+a4:18:75:9b:d7:30,,240
+a4:18:75:65:7c:b0,,241
+00:08:ca:ce:4a:14,Digital.MediaNet.CapeUnionMart,242
+64:a0:e7:db:a0:40,,243
+b2:e0:3c:a3:5a:98,Stony,244
+64:a0:e7:db:a0:46,SSID82,245
+64:a0:e7:db:a0:45,MTN_GUEST,246
+2c:e6:cc:07:ba:28,AlwaysOn,247
+a4:18:75:79:ee:b0,,248
+a4:18:75:9b:d7:32,,249
+a4:18:75:9b:58:70,,250
+a4:18:75:79:ee:b3,,251
+a4:18:75:79:ee:b2,,252
+5c:0e:8b:2d:fb:03,stores2,253
+a4:18:75:9b:d7:31,,254
+a4:18:75:9b:d7:35,Wdzzkyy1,255
+a4:18:75:b2:36:90,,256
+54:a2:74:e3:e4:d5,Wdzzkyy1,257
+00:1a:30:c1:37:c1,,258
+a4:18:75:79:ee:b5,Wdzzkyy1,259
+64:a0:e7:db:a0:47,MTN_GUEST2,260
+54:a2:74:e3:e4:d3,,261
+64:a0:e7:db:a0:41,,262
 00:1a:30:c1:37:c2,voice,263
-00:1a:30:c1:37:c1,,264
-00:1a:30:c1:37:c0,101,265
-c4:3d:c7:6b:33:5a,NETGEAR,266
-6c:ad:f8:1d:34:e5,Audimator929C,267
-00:1a:30:c1:35:a0,101,268
-32:cd:a7:20:db:2e,DIRECT-BPM2070 Series,269
-64:a0:e7:db:a0:46,SSID82,270
-2c:e6:cc:89:27:e8,FibreExpo@VAST,271
-26:e5:2a:59:df:56,NETGEAR_EXT,272
-00:08:ca:ce:4a:14,Digital.MediaNet.CapeUnionMart,273
-00:3a:99:bd:eb:80,101,274
-a4:18:75:b2:08:70,,275
-2c:e6:cc:4b:7c:83,island-0B7C80,276
-ec:1d:7f:f7:3c:e1,Sausage Saloon,277
-2c:e6:cc:0b:7c:88,AlwaysOn,278
-00:3a:99:bd:ec:d2,voice,279
-90:8d:78:b1:ee:b2,Glocell,280
-2c:e6:cc:8a:1b:38,FibreExpo@VAST,281
-b4:3a:28:26:9e:67,BxfF-TWFuZ28,282
-64:a0:e7:db:a0:41,,283
-e8:ed:f3:28:2a:31,FNB WIFI,284
-0c:96:bf:69:b6:b3,B683-B6B1,285
-64:a0:e7:db:a0:40,,286
-e8:ed:f3:28:2a:30,FRB-Wireless,287
-54:a2:74:e3:e4:d0,,288
-00:8e:f2:83:63:26,Casabel1,289
-54:a2:74:e3:e4:d3,,290
-9e:93:4e:39:55:a2,DIRECT-TFPhaser 3260,291
-00:3a:99:bd:ec:d0,101,292
-a4:18:75:9b:d7:35,Wdzzkyy1,293
-6c:f3:7f:1b:12:81,1 Telkom Connect,294
-a4:18:75:b2:36:95,Wdzzkyy1,295
-a4:18:75:9b:d7:31,,296
-00:14:a5:46:f4:d9,GlobeSurfer,297
-00:18:39:2c:fe:e8,gstone,298
-a4:18:75:9b:d7:30,,299
-a4:18:75:b2:36:93,,300
-a4:18:75:79:ee:b1,,301
-a4:18:75:79:ee:b5,Wdzzkyy1,302
-a4:18:75:79:ee:b2,,303
-a4:18:75:79:ee:b0,,304
-c2:9f:db:ed:5d:1e,InnerCircle,305
-a4:18:75:9b:d7:33,,306
-00:19:e0:8f:d4:5a,Digital.MediaNet.CellC,307
-a4:18:75:79:ee:b3,,308
-54:a2:74:e3:e4:d2,,309
-a4:18:75:b2:36:92,,310
-2c:e6:cc:87:ba:28,FibreExpo@VAST,311
-2c:e6:cc:07:ba:28,AlwaysOn,312
-c4:34:6b:0e:b9:1c,HP-Print-1C-Officejet Pro 8620,313
-a4:18:75:9b:58:70,,314
-a4:18:75:65:7c:b0,,315
-00:1d:a2:85:e7:d0,,316
-2c:e6:cc:47:ba:28,@VAST,317
-00:25:84:da:64:30,CellC_Wifi_Hotspot,318
-f4:55:9c:12:ce:24,Edgars Greenstone,319
-6c:19:8f:67:ef:ab,GREENSTONE,320
-5c:b9:01:6d:39:b0,HP-Print-B0-Deskjet 4640 series,321
-5c:0e:8b:2d:fb:00,Edcon,322
-00:18:4d:3a:e6:d4,Matador,323
-8c:79:67:3f:fb:1c,uFi_3FFB1C,324
-00:04:ed:bd:9a:73,Limited Access,325
-5c:0e:8b:2d:fb:02,,326
-f8:4f:57:a0:4b:42,v-dealer,327
-d6:ca:6d:55:79:72,AlwaysOnSmart,328
-f8:4f:57:a0:4b:41,VS-Internet,329
-d6:ca:6d:55:79:71,AlwaysOn@Mugg&Bean,330
-d6:ca:6d:55:79:73,@VAST,331
-f8:4f:57:a0:4b:40,VS-LAN,332
-a8:f7:e0:13:97:9b,BCM,333
-d4:ca:6d:55:79:71,,334
-c0:4a:00:37:90:02,CLASSIQUE OPTICAL GREENSTONE,335
-84:b8:02:86:ac:c0,AlwaysOn@PnP,336
-08:ee:8b:6e:4c:d1,GS-Samsung,337
-84:78:ac:b9:09:1a,1 Telkom Guest,338
-84:78:ac:b9:09:19,1 Telkom Connect,339
-f4:e3:fb:6c:09:98,MTN-0998,340
-48:db:50:ca:1f:4b,HUAWEI-1F4B,341
-02:08:22:16:4d:fc,vuvu,342
-50:f0:d3:60:42:1f,and ,343
-48:5a:3f:76:bb:99,Lina,344
-bc:25:e0:8d:8c:4f,BCM,345
-5c:0e:8b:2d:fb:03,,346
-54:a2:74:e3:e4:d5,Wdzzkyy1,347
-a4:18:75:9b:d7:32,,348
-a4:18:75:b2:36:91,,349
-54:a2:74:e3:e4:d1,,350
-00:3a:99:bd:ec:d1,,351
-00:1a:30:c1:35:a1,,352
-00:3a:99:bd:eb:81,,353
-00:3a:99:bd:eb:82,voice,354
-6c:f3:7f:1b:12:80,1 Telkom Guest,355
-38:f8:89:47:0d:d6,BCM_DNI,356
+2c:e6:cc:8a:1b:38,FibreExpo@VAST,264
+a4:18:75:79:ee:b1,,265
+a4:18:75:b2:36:91,,266
+a4:18:75:9b:d7:33,,267
+e8:ed:f3:28:2a:30,FRB-Wireless,268
+a4:18:75:b2:36:95,Wdzzkyy1,269
+a4:18:75:b2:36:92,,270
+00:1a:30:c1:35:a1,,271
+2c:e6:cc:4a:1b:38,@VAST,272
+00:1a:30:c1:37:c0,101,273
+90:94:e4:69:45:4b,8ta_Greenstone,274
+00:18:39:2c:fe:e8,gstone,275
+54:a2:74:e3:e4:d2,,276
+00:3a:99:bd:ec:d2,voice,277
+00:1a:30:c1:35:a0,101,278
+00:3a:99:bd:ec:d0,101,279
+00:1a:30:c1:35:a2,voice,280
+00:3a:99:bd:ec:d1,,281
+2c:e6:cc:0a:1b:38,AlwaysOn,282
+e8:ed:f3:28:2a:31,FNB WIFI,283
+0c:96:bf:69:b6:b3,B683-B6B1,284
+a4:18:75:b2:36:93,,285
+54:a2:74:e3:e4:d1,,286
+54:a2:74:e3:e4:d0,,287
+54:a2:74:e3:e3:62,,288
+90:8d:78:b1:ee:b2,Glocell,289
+32:cd:a7:20:db:2e,DIRECT-BPM2070 Series,290
+f0:b0:52:30:0d:b8,AlwaysOn@Nedbank,291
+f0:b0:52:70:0d:b8,AlwaysOnSmart,292
+00:3a:99:bd:eb:82,voice,293
+00:3a:99:bd:eb:80,101,294
+9e:93:4e:39:55:a2,DIRECT-TFPhaser 3260,295
+dc:ee:06:b4:15:4b,SkinPHDGreenstone,296
+54:a2:74:e3:e3:61,,297
+6c:f3:7f:1b:12:81,1 Telkom Connect,298
+6c:f3:7f:1b:12:80,1 Telkom Guest,299
+58:20:b1:3d:78:84,HP-Print-84-Deskjet 4640 series,300
+00:3a:99:bd:eb:81,,301
+6a:05:71:df:96:20,DIRECT-,302
+54:b8:0a:f7:57:7c,CGSC WIFI,303
+8c:bf:a6:a8:86:95,AndroidAP,304
+56:a0:50:9f:16:09,DIRECT-,305
+2c:e6:cc:0b:0b:88,AlwaysOn,306
+2c:e6:cc:4b:0b:88,@VAST,307
+2c:e6:cc:8b:0b:88,FibreExpo@VAST,308
+00:26:75:f5:08:0e,Greenstone 3@1,309
+d8:fe:e3:b6:db:70,Samsung_Telkom,310
+d0:c7:89:0f:48:c0,DW-GRNSTN-WIFI,311
+00:3a:9a:0c:b6:10,GM-GRE-WIFI,312
+38:20:56:d5:fa:30,2Net,313
+38:20:56:d5:fa:31,OneTelkom,314
+2e:a4:3c:31:c3:6f,Mygym Staff,315
+00:3a:9a:0c:c0:91,GM-MAC-WIFI,316
+00:3a:9a:0c:b6:11,GM-MAC-WIFI,317
+00:3a:9a:0c:c0:90,GM-GRE-WIFI,318
+2a:a4:3c:31:c3:6f,Mygym Members,319
+28:92:4a:a8:83:0f,HP-Print-0F-Officejet 6700,320
+d0:c7:89:24:90:b0,DW-GRNSTN-WIFI,321
+e8:08:8b:c0:c6:08,HUAWEI-B593-C608,322
+82:6a:b0:d9:ec:e4,mirror,323
+00:03:52:ae:4a:d0,WirelessG,324
+0a:ee:8b:f6:a7:37,DIRECT-,325
+54:a2:74:e3:e3:60,,326
+2a:a4:3c:bb:b5:c7,DixonAdventure,327
+ac:cf:85:b9:cf:1d,VodafoneMobileWiFi-CF1D50,328
+54:a2:74:e3:e3:65,Wdzzkyy1,329
+54:a2:74:e3:e3:63,,330
+3c:1e:04:17:b3:44,dlink_DWR-730_B344,331
+00:03:52:ae:4a:d1,G-Connect,332
+ac:16:2d:e2:ad:f0,,333
+ac:cf:85:7a:e2:20,VodafoneMobileWiFi-E22066,334
+e8:de:27:36:a7:a3,MMD,335
+9e:a9:e4:da:50:9f,VodafoneMobileWiFi-DA509F,336
+78:40:e4:49:e8:98,Bnlb-U00tSjEwMEg,337
+00:04:ed:42:ca:70,GALGRNS-WAP,338
+98:f1:70:45:97:11,AndroidAP,339
+aa:a6:68:ad:cb:20,VodafoneMobileWiFi-ADCB20,340
+48:5a:3f:7e:6e:be,BsLO-YmFib25naWxl,341
+f4:09:d8:ac:f9:26,bamji,342
+e8:08:8b:53:52:b5,CRCCNEW,343
