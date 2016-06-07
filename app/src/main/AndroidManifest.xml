@@ -33,6 +33,14 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.cogn.wifirecord.RecordActivity" />
         </activity>
+        <activity
+            android:name=".SearchShopActivity"
+            android:label="@string/title_activity_search_shop"
+            android:parentActivityName=".RecordActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.cogn.wifirecord.RecordActivity" />
+        </activity>
     </application>
 
 </manifest>

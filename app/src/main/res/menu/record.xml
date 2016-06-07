@@ -4,7 +4,14 @@
 
     <item android:id="@+id/menu_locate"
         android:title="Locate Mode"
-        android:showAsAction="ifRoom" />
+        android:showAsAction="ifRoom"
+        android:icon="@drawable/ic_menu_mylocation"/>
+
+    <item android:id="@+id/menu_search"
+        android:title="Continuous Record"
+        android:showAsAction="always"
+        android:icon="@drawable/ic_menu_search"
+        />
 
     <item android:id="@+id/menu_record"
         android:title="Record Mode"
