@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -24,12 +25,12 @@ public class ScrollImageView extends View {
     private long startTimeMillis;
     private String movementStatus = null;
 
-
     public enum ViewMode {LOCATE, RECORD}
     private RecordMenuMaker recordMenuMaker;
     private final int DEFAULT_PADDING = 0;
     private Display mDisplay;
     private Bitmap mImage;
+    private Integer displayLevel;
     private Paint imagePaint = new Paint();
     private float density;
     private int mPadding;
@@ -54,8 +55,8 @@ public class ScrollImageView extends View {
     private Paint summaryRecordedPaint;
 
     // For recording
-    private Float latestCircleX = null;
-    private Float latestCircleY = null;
+    private Float currentX = null;
+    private Float currentY = null;
     private List<Float> thisSessionRecordedX = new ArrayList<>();
     private List<Float> thisSessionRecordedY = new ArrayList<>();
     private List<Float> previousSessionRecordedX = new ArrayList<>();
@@ -63,12 +64,9 @@ public class ScrollImageView extends View {
 
     private Paint thisSessionRecordedPaint;
     private Paint previousSessionRecordedPaint;
-    private Paint latestCirclePaint;
 
     // For location
     private List<String> summaryScores = new ArrayList<>();
-    private Float currentX = null;
-    private Float currentY = null;
     private Float bestGuessX = null;
     private Float bestGuessY = null;
     private Float bestGuessRadius = null;
@@ -79,6 +77,16 @@ public class ScrollImageView extends View {
     // Text on screen
     private String scanProgress = null;
     private Paint textPaint;
+
+    //Shops and paths
+    private List<String> shopNames;
+    private List<Float> shopXs;
+    private List<Float> shopYs;
+    private List<Integer> shopLevels;
+    private Route route;
+    private Paint routePaint;
+    private Paint shopRectPaint;
+    private Paint shopTextPaint;
 
 
     /**
@@ -105,16 +113,14 @@ public class ScrollImageView extends View {
     }
 
     public void setViewMode(ViewMode viewMode){
+        currentX = null;
+        currentY = null;
         if (viewMode == ViewMode.RECORD) {
             summaryScores = new ArrayList<>();
-            currentX = null;
-            currentY = null;
             bestGuessX = null;
             bestGuessY = null;
             bestGuessRadius = null;
         } else {
-            latestCircleX = null;
-            latestCircleY = null;
             thisSessionRecordedX = new ArrayList<>();
             thisSessionRecordedY = new ArrayList<>();
             previousSessionRecordedX = new ArrayList<>();
@@ -127,12 +133,6 @@ public class ScrollImageView extends View {
     private void initScrollImageView(Context context) {
         mDisplay = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
         mPadding = DEFAULT_PADDING;
-
-        latestCirclePaint = new Paint();
-        latestCirclePaint.setColor(Color.GREEN);
-        latestCirclePaint.setStrokeWidth(2);
-        latestCirclePaint.setStyle(Paint.Style.FILL);
-        latestCirclePaint.setAntiAlias(true);
 
         thisSessionRecordedPaint = new Paint();
         thisSessionRecordedPaint.setColor(Color.BLUE);
@@ -170,24 +170,61 @@ public class ScrollImageView extends View {
         currentPaint.setAlpha(200);
         currentPaint.setAntiAlias(true);
 
+        shopNames = new ArrayList<>();
+        shopXs = new ArrayList<>();
+        shopYs = new ArrayList<>();
+        shopLevels = new ArrayList<>();
+        shopRectPaint = new Paint();
+        shopRectPaint.setColor(Color.GRAY);
+        shopRectPaint.setStrokeWidth(2);
+        shopRectPaint.setStyle(Paint.Style.FILL);
+        shopRectPaint.setAlpha(200);
+        shopRectPaint.setAntiAlias(true);
+
+        shopTextPaint = new Paint();
+        shopTextPaint.setColor(Color.BLACK);
+        shopTextPaint.setTextSize(24);
+
+        routePaint = new Paint();
+        routePaint.setColor(Color.RED);
+        routePaint.setStrokeWidth(2);
+        routePaint.setStyle(Paint.Style.FILL);
+        routePaint.setAlpha(200);
+        routePaint.setAntiAlias(true);
+
+
     }
 
     public Bitmap getImage() {
         return mImage;
     }
+    
+    public Position getCurrentPosition(){
+        if (currentX == null) return null;
+        return new Position(currentX/density, currentY/density, displayLevel);
+    }
 
-    public void setImage(Bitmap image, float density) {
+    public void setRoute(Route route) {
+        this.route = route;
+    }
+
+    public void setImage(Bitmap image, float density, int displayLevel) {
         this.density = density;
+        this.displayLevel = displayLevel;
         mImage = image;
         latestTouchX = 0;
         latestTouchY = 0;
-        mTotalX = 0;
-        mTotalY = 0;
+
+        mTotalX = Math.min(0, -image.getWidth()/2 + getMeasuredWidth()/2);
+        mTotalY = Math.min(0, -image.getHeight()/2 + getMeasuredHeight()/2);
+
+        //mTotalX = 0;
+        //mTotalY = 0;
         mDeltaX = 0;
         mDeltaY = 0;
 
-        latestCircleX = null;
-        latestCircleY = null;
+        currentX = null;
+        currentY = null;
         thisSessionRecordedX  = new ArrayList<>();
         thisSessionRecordedY = new ArrayList<>();
         previousSessionRecordedX  = new ArrayList<>();
@@ -224,8 +261,8 @@ public class ScrollImageView extends View {
      * Removes the latest circle added
      */
     public void deletePoint() {
-        latestCircleX = null;
-        latestCircleY = null;
+        currentX = null;
+        currentY = null;
         invalidate();
     }
 
@@ -236,10 +273,17 @@ public class ScrollImageView extends View {
      */
     public void addRecordedPoint()
     {
-        thisSessionRecordedX.add(latestCircleX);
-        thisSessionRecordedY.add(latestCircleY);
-        latestCircleX = null;
-        latestCircleY = null;
+        thisSessionRecordedX.add(currentX);
+        thisSessionRecordedY.add(currentY);
+        currentX = null;
+        currentY = null;
+    }
+
+    public void addShop(String shopName, float x, float y, int level) {
+        shopNames.add(shopName);
+        shopXs.add(x*density);
+        shopYs.add(y*density);
+        shopLevels.add(level);
     }
 
     public void updateMovementStatus(String movementStatus) {
@@ -311,19 +355,19 @@ public class ScrollImageView extends View {
             // If there is a circle but the click is not near it, replace the latest circle
             if(clickDuration < 200) {
                 //click event has occurred
-                if (latestCircleX!=null && latestCircleY!=null) {
-                    double dist = Math.sqrt(Math.pow(latestCircleX - imageX, 2) + Math.pow(latestCircleY - imageY, 2));
+                if (currentX!=null && currentY!=null) {
+                    double dist = Math.sqrt(Math.pow(currentX - imageX, 2) + Math.pow(currentY - imageY, 2));
                     if (dist < 50.0) {
-                        recordMenuMaker.makeRecordMenu(latestCircleX/density, latestCircleY/density);
+                        recordMenuMaker.makeRecordMenu(currentX/density, currentY/density);
                     }
                     else {
-                        latestCircleX = imageX;
-                        latestCircleY = imageY;
+                        currentX = imageX;
+                        currentY = imageY;
                     }
                 }
                 else {
-                    latestCircleX = imageX;
-                    latestCircleY = imageY;
+                    currentX = imageX;
+                    currentY = imageY;
                 }
             }
             mDeltaX = 0;
@@ -385,7 +429,7 @@ public class ScrollImageView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-
+        canvas.drawBitmap(mImage, mTotalX, mTotalY, imagePaint);
         if (mImage == null) {
             return;
         }
@@ -410,13 +454,36 @@ public class ScrollImageView extends View {
         if (mPadding > newTotalY && newTotalY > getMeasuredHeight() - mImage.getHeight() - mPadding)
             mTotalY += mDeltaY;
 
+        // Add shop names and path
+        if (shopNames.size()>0)
+        {
+            for (int i = 0; i <shopNames.size() ; i++) {
+                if (shopLevels.get(i)==displayLevel){
+                    drawShopTag(canvas, shopNames.get(i), shopXs.get(i), shopYs.get(i));
+                }
+            }
+        }
+        if (route!=null)
+        {
+            for (int i = 0; i < (route.size()-1); i++) {
+                if (route.get(i).level == route.get(i+1).level && route.get(i).level == displayLevel)
+                {
+                    float x1 = route.get(i).x*density + mTotalX;
+                    float y1 = route.get(i).y*density + mTotalY;
+                    float x2 = route.get(i+1).x*density + mTotalX;
+                    float y2 = route.get(i+1).y*density + mTotalY;
+                    canvas.drawLine(x1, y1, x2, y2, routePaint);
+                }
+            }
+        }
+        
+
+        // Latest circle
+        if (currentX != null && currentY != null) {
+            canvas.drawCircle(currentX + mTotalX, currentY + mTotalY, 10 * density, currentPaint);
+        }
 
         if (viewMode==ViewMode.RECORD) {
-            canvas.drawBitmap(mImage, mTotalX, mTotalY, imagePaint);
-            // Latest circle
-            if (latestCircleX != null && latestCircleY != null) {
-                canvas.drawCircle(latestCircleX + mTotalX, latestCircleY + mTotalY, 6 * density, latestCirclePaint);
-            }
             // This session circles
             drawCircles(canvas, thisSessionRecordedX, thisSessionRecordedY, thisSessionRecordedPaint);
             // Previous session circles
@@ -426,7 +493,7 @@ public class ScrollImageView extends View {
             // The current scan progress
             // TODO: Add a nice partially transparant rectangle to hold the update.
             if (scanProgress != null) {
-                canvas.drawText(scanProgress, latestCircleX + mTotalX, latestCircleY + mTotalY, textPaint);
+                canvas.drawText(scanProgress, currentX + mTotalX, currentY + mTotalY, textPaint);
             }
         } else if (viewMode==ViewMode.LOCATE) {
             // put the current location in the middle
@@ -443,16 +510,10 @@ public class ScrollImageView extends View {
                 if (mTotalY <= getMeasuredHeight() - mImage.getHeight() - mPadding)
                     mTotalY = getMeasuredHeight() - mImage.getHeight() - mPadding + 1;
             }
-
-            canvas.drawBitmap(mImage, mTotalX, mTotalY, imagePaint);
-
             // Points with summaries
             drawCircles(canvas, summaryRecordedX, summaryRecordedY, summaryRecordedPaint);
             if (bestGuessX != null && bestGuessY != null) {
                 canvas.drawCircle(bestGuessX + mTotalX, bestGuessY + mTotalY, bestGuessRadius * density, bestGuessPaint);
-            }
-            if (currentX != null && currentY != null) {
-                canvas.drawCircle(currentX + mTotalX, currentY + mTotalY, 10 * density, currentPaint);
             }
 
             Iterator<Float> xIter = summaryRecordedX.iterator();
@@ -491,6 +552,31 @@ public class ScrollImageView extends View {
         }
     }
 
+
+    /**
+     * Add the shop tags that have been searched for on the current level.
+     */
+    private void drawShopTag(Canvas canvas, String name, float x, float y) {
+        Rect textBounds = new Rect();
+        shopTextPaint.getTextBounds(name, 0, name.length(), textBounds);
+
+        float l = x - textBounds.width() / 2 + mTotalX - 5; // left
+        float t = y - textBounds.height() / 2 + mTotalY - 5; // top
+        float r = x + textBounds.width() / 2 + mTotalX + 5;// right
+        float b = y + textBounds.height() / 2 + mTotalY + 5; // bottom
+
+        RectF rectF = new RectF(l, t, r, b);
+        int cornersRadius = 5;
+        canvas.drawRoundRect(
+                rectF, // rect
+                cornersRadius, // rx
+                cornersRadius, // ry
+                shopRectPaint // Paint
+        );
+        canvas.drawText(name, l + 5, b - 5, shopTextPaint);
+    }
+
+
     private float[] listToArray(List<Float> list)
     {
         float[] array = new float[list.size()];
@@ -514,9 +600,9 @@ public class ScrollImageView extends View {
     public Bundle getState()
     {
         Bundle state = new Bundle();
-        if (latestCircleX!=null) {
-            state.putFloat("latestCircleX", latestCircleX);
-            state.putFloat("latestCircleY", latestCircleY);
+        if (currentX!=null) {
+            state.putFloat("currentX", currentX);
+            state.putFloat("currentY", currentY);
         }
         state.putFloatArray("thisSessionRecordedX", listToArray(thisSessionRecordedX));
         state.putFloatArray("thisSessionRecordedY", listToArray(thisSessionRecordedY));
@@ -531,12 +617,12 @@ public class ScrollImageView extends View {
 
     public void setState(Bundle state)
     {
-        if (state.containsKey("latestCircleX")) {
-            latestCircleX = state.getFloat("latestCircleX");
-            latestCircleY = state.getFloat("latestCircleY");
+        if (state.containsKey("currentX")) {
+            currentX = state.getFloat("currentX");
+            currentY = state.getFloat("currentY");
         }else {
-            latestCircleX = null;
-            latestCircleY = null;
+            currentX = null;
+            currentY = null;
         }
         thisSessionRecordedX = arrayToList(state.getFloatArray("thisSessionRecordedX"));
         thisSessionRecordedY = arrayToList(state.getFloatArray("thisSessionRecordedY"));

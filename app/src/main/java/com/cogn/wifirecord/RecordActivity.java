@@ -1,6 +1,7 @@
 package com.cogn.wifirecord;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DialogFragment;
 import android.content.Context;
 import android.content.Intent;
@@ -30,12 +31,13 @@ import java.util.Map;
 public class RecordActivity extends Activity
     implements PopupMenuDialogFragment.OptionSetListener,
         ScrollImageView.RecordMenuMaker,
-        SharedPreferences.OnSharedPreferenceChangeListener
-        {
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
-    static final String RO_RECORD = "Record Wifi at this Point";
-    static final String RO_DELETE = "Delete this point";
+    private static final String RO_RECORD = "Record Wifi at this Point";
+    private static final String RO_DELETE = "Delete this point";
     private static final String TAG = "WIFI";
+    private static final int REQUEST_CODE_SEARCH_SHOP = 1001;
+    private static final int REQUEST_CODE_LOAD_TEST = 1000;
 
     public static String sessionStartTime = null;
     private PopupMenuDialogFragment popupMenu;
@@ -59,7 +61,7 @@ public class RecordActivity extends Activity
     private SensorManager sensorMan;
     private Sensor accelerometer;
     private ScrollImageView.ViewMode savedViewModeToUse;
-    private int REQUEST_CODE_LOAD_TEST = 1000;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +128,11 @@ public class RecordActivity extends Activity
         storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         setLevel(levelDescriptionToUse);
         setViewMode(savedViewModeToUse);
+
+        GlobalData.shopDirectory = new ShopDirectory();
+        GlobalData.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
+        GlobalData.mallGraph = new Graph();
+        GlobalData.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph));
     }
 
     private InputStream getSummaryInputStream() {
@@ -228,7 +235,7 @@ public class RecordActivity extends Activity
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
-        floorMapView.setImage(floorMapImage, density);
+        floorMapView.setImage(floorMapImage, density, currentLevelID);
     }
 
 
@@ -323,6 +330,12 @@ public class RecordActivity extends Activity
                 startLocating(new WifiScanner(wifiManager, getMacInputStream()));
                 return true;
             }
+            case R.id.menu_search: {
+                Intent intent = new Intent(this, SearchShopActivity.class);
+                intent.putExtra("location", currentPlan);
+                startActivityForResult(intent, REQUEST_CODE_SEARCH_SHOP);
+                return true;
+            }
             case R.id.menu_record: {
                 // Start the locating thread
                 sensorMan.unregisterListener(locator);
@@ -405,7 +418,39 @@ public class RecordActivity extends Activity
         if (requestCode == REQUEST_CODE_LOAD_TEST && resultCode == RESULT_OK && data != null) {
             String filename = data.getStringExtra(LoadTestActivity.EXTRA_FILENAME);
             runSimulatedPath(filename);
+            return;
         }
+        if (requestCode == REQUEST_CODE_SEARCH_SHOP && resultCode == RESULT_OK && data != null) {
+            boolean directions = data.getBooleanExtra(SearchShopActivity.INTENT_EXTRA_DIRECTIONS, false);
+            String category = data.getStringExtra(SearchShopActivity.INTENT_EXTRA_CATEGORY);
+            String shopName = data.getStringExtra(SearchShopActivity.INTENT_EXTRA_SHOP);
+            Log.d(TAG, "" + directions);
+            Log.d(TAG, category);
+            Log.d(TAG, shopName);
+            Shop shop = GlobalData.shopDirectory.getShop(category, shopName);
+            for (int i = 0; i < shop.getEntranceLocations().size(); i++) {
+                floorMapView.addShop(shopName,
+                        shop.getEntranceLocations().get(i).x,
+                        shop.getEntranceLocations().get(i).y,
+                        shop.getEntranceLocations().get(i).level);
+            }
+            Position currentPosition = floorMapView.getCurrentPosition();
+            if (currentPosition==null) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setPositiveButton("OK", null);
+                builder.setTitle("Error");
+                builder.setMessage("No current position has been set");
+                builder.show();
+                return;
+            }
+                else {
+
+                Route route = GlobalData.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
+                floorMapView.setRoute(route);
+                floorMapView.invalidate();
+            }
+        }
+
     }
 
     /**
@@ -542,7 +587,7 @@ public class RecordActivity extends Activity
      * want to make a wifi recfording there or remove the point.
      *
      * @param x actual pixel location of click event.  Not device independent version.
-     * @param y
+     * @param y actual pixel location of click event.  Not device independent version.
      */
     @Override
     public void makeRecordMenu(float x, float y) {
