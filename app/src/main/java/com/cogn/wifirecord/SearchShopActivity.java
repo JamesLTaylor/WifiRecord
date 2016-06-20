@@ -33,7 +33,7 @@ public class SearchShopActivity extends Activity implements AdapterView.OnItemSe
         categorySpinner.setOnItemSelectedListener(this);
         shopNameSpinner.setOnItemSelectedListener(this);
 
-        String[] categoryArray = GlobalData.shopDirectory.listCategories();
+        String[] categoryArray = GlobalDataFragment.shopDirectory.listCategories();
         Arrays.sort(categoryArray);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categoryArray);
         categorySpinner.setAdapter(adapter);
@@ -46,7 +46,7 @@ public class SearchShopActivity extends Activity implements AdapterView.OnItemSe
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
         if (parent.getId() == categorySpinner.getId()){
             String selectedCategory = categorySpinner.getSelectedItem().toString();
-            String[] shopNameArray = GlobalData.shopDirectory.listShopNames(selectedCategory);
+            String[] shopNameArray = GlobalDataFragment.shopDirectory.listShopNames(selectedCategory);
             Arrays.sort(shopNameArray);
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, shopNameArray);
             shopNameSpinner.setAdapter(adapter);

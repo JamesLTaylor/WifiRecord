@@ -18,6 +18,7 @@ import java.util.List;
 public class Graph {
 
     private SparseArray<Graph.Node> nodes;
+    private double pxPerM;
 
     public Graph(){}
 
@@ -29,7 +30,8 @@ public class Graph {
      *                             - level
      *                             - [nodeTo1, nodeTo2, ...]
      */
-    public void loadFromFile(InputStream inputStream){
+    public void loadFromFile(InputStream inputStream, double pxPerM){
+        this.pxPerM = pxPerM;
         BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
 
         StringBuilder jsonString = new StringBuilder();
@@ -85,26 +87,15 @@ public class Graph {
      */
     public Route getRoute(Position start, Position end)
     {
-        Route route = new Route();
-        route.addPoint(start);
-        route.addPoint(end);
-        return null;
-    }
-
-    public Route getRoute(Position start, Shop endShop)
-    {
-        Position end = endShop.entranceLocations.get(0);
         double minDStart = 1e9;
         double minDEnd = 1e9;
-        Route route = new Route();
-        route.addPoint(start);
-        route.addPoint(endShop.entranceLocations.get(0));
+
         int startInd = 0;
         int endInd = 0;
 
         for (int i = 0; i < nodes.size(); i++) {
             nodes.valueAt(i).dist = 1e9f;
-            nodes.valueAt(i).route = new Route();
+            nodes.valueAt(i).route = new Route(pxPerM);
             double ds = start.getDistanceTo(nodes.valueAt(i).pos);
             double de = end.getDistanceTo(nodes.valueAt(i).pos);
             if (ds<minDStart) {
@@ -152,8 +143,27 @@ public class Graph {
             vertexSet.remove(current);
         }
 
+        nodes.get(endInd).route.finalizeConstruction();
         return nodes.get(endInd).route;
     }
+
+
+    public Route getRoute(Position start, Shop endShop)
+    {
+        double minD = 1e9;
+
+        Route route = null;
+        for (Position entranceLocation : endShop.entranceLocations)
+        {
+            Route tempRoute = getRoute(start, entranceLocation);
+            if (tempRoute.getPathLength()<minD) {
+                route = tempRoute;
+            }
+        }
+        route.createDescription();
+        return route;
+    }
+
 
     public class Node {
         public Position pos;

@@ -15,9 +15,11 @@ import java.util.Set;
  */
 public class ShopDirectory {
     private Map<String, List<Shop>> directory;
+    private List<Shop> allShops;
     
     public ShopDirectory(){
         directory = new HashMap<>();
+        allShops = new ArrayList<>();
     }
 
     public void loadFromFile(InputStream inputStream) {
@@ -62,14 +64,39 @@ public class ShopDirectory {
     }
 
 
+    /**
+     * Get a shops based only only on the name.  Will return null if a match is not found.
+     */
+    public Shop getShop(String shopName){
+
+        for (String key : directory.keySet()) {
+            List<Shop> shopList = directory.get(key);
+            for (Shop shop : shopList) {
+                if (shop.getName().equals(shopName)) return shop;
+            }
+        }
+        return null;
+    }
+
+
+    public List<Shop> getAllShops() {
+        return allShops;
+    }
+
+    /**
+     * Returns an existing shop or adds a new one to the list and returns that
+     */
     private Shop getShop(List<Shop> shopList, String name)
     {
         for (Shop shop : shopList) {
             if (shop.getName().equals(name)) return shop;
         }
         shopList.add(new Shop());
+        allShops.add(shopList.get(shopList.size()-1));
         return shopList.get(shopList.size()-1);
     }
+
+
     
     public String[] listCategories()
     {

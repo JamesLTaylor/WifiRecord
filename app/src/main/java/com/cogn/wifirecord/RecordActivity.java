@@ -3,6 +3,7 @@ package com.cogn.wifirecord;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DialogFragment;
+import android.app.FragmentManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -61,6 +62,8 @@ public class RecordActivity extends Activity
     private SensorManager sensorMan;
     private Sensor accelerometer;
     private ScrollImageView.ViewMode savedViewModeToUse;
+    private long lastLocationClickTime = 0;
+    private boolean continuousLocate = false;
 
 
     @Override
@@ -104,7 +107,6 @@ public class RecordActivity extends Activity
         // WIFI Manager
         wifiManager = (WifiManager)getSystemService(Context.WIFI_SERVICE);
 
-
         // Sensor manager
         sensorMan = (SensorManager)getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -129,11 +131,23 @@ public class RecordActivity extends Activity
         setLevel(levelDescriptionToUse);
         setViewMode(savedViewModeToUse);
 
-        GlobalData.shopDirectory = new ShopDirectory();
-        GlobalData.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
-        GlobalData.mallGraph = new Graph();
-        GlobalData.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph));
+
+        FragmentManager fm = getFragmentManager();
+        GlobalDataFragment globalData = (GlobalDataFragment) fm.findFragmentByTag("data");
+        // create the fragment and data the first time
+        if (globalData == null) {
+            // add the fragment
+            globalData = new GlobalDataFragment();
+            fm.beginTransaction().add(globalData, "data").commit();
+
+            GlobalDataFragment.shopDirectory = new ShopDirectory();
+            GlobalDataFragment.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
+            GlobalDataFragment.mallGraph = new Graph();
+            GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
+        }
     }
+
+
 
     private InputStream getSummaryInputStream() {
         InputStream inputStream;
@@ -200,6 +214,10 @@ public class RecordActivity extends Activity
             optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
             optionsMenu.findItem(R.id.menu_record).setEnabled(false);
         }
+        if (continuousLocate)
+            optionsMenu.findItem(R.id.menu_locate).setIcon(R.drawable.ic_menu_mylocation_green);
+        else
+            optionsMenu.findItem(R.id.menu_locate).setIcon(R.drawable.ic_menu_mylocation);
         return true;
     }
 
@@ -326,8 +344,16 @@ public class RecordActivity extends Activity
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.menu_locate: {
+                long clickDelay = (Calendar.getInstance().getTimeInMillis() - lastLocationClickTime);
+                Log.d(TAG,""+clickDelay);
+                if (clickDelay<600){
+                    continuousLocate = !continuousLocate;
+                    invalidateOptionsMenu();
+                }
+                lastLocationClickTime = Calendar.getInstance().getTimeInMillis();
+
                 // Start the locating thread
-                startLocating(new WifiScanner(wifiManager, getMacInputStream()));
+                //startLocating(new WifiScanner(wifiManager, getMacInputStream()));
                 return true;
             }
             case R.id.menu_search: {
@@ -427,7 +453,7 @@ public class RecordActivity extends Activity
             Log.d(TAG, "" + directions);
             Log.d(TAG, category);
             Log.d(TAG, shopName);
-            Shop shop = GlobalData.shopDirectory.getShop(category, shopName);
+            Shop shop = GlobalDataFragment.shopDirectory.getShop(category, shopName);
             for (int i = 0; i < shop.getEntranceLocations().size(); i++) {
                 floorMapView.addShop(shopName,
                         shop.getEntranceLocations().get(i).x,
@@ -445,7 +471,7 @@ public class RecordActivity extends Activity
             }
                 else {
 
-                Route route = GlobalData.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
+                Route route = GlobalDataFragment.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
                 floorMapView.setRoute(route);
                 floorMapView.invalidate();
             }

@@ -1,13 +1,8 @@
 package com.cogn.wifirecord;
 
 import android.test.AndroidTestCase;
-import android.test.InstrumentationTestCase;
-
-import junit.framework.TestCase;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 //@RunWith(JUnit4.class)
 public class RouteTest extends AndroidTestCase{
@@ -21,14 +16,16 @@ public class RouteTest extends AndroidTestCase{
 */
     @Test
     public void testRoute(){
-        GlobalData.mallGraph = new Graph();
-        GlobalData.mallGraph.loadFromFile(getContext().getResources().openRawResource(R.raw.greenstone_graph));
-        GlobalData.shopDirectory = new ShopDirectory();
-        GlobalData.shopDirectory.loadFromFile(getContext().getResources().openRawResource(R.raw.shop_locations));
-        Shop shop = GlobalData.shopDirectory.getShop("Art, Antiques, Curios & Gifts", "Spilhaus");
-        //Shop shop = GlobalData.shopDirectory.getShop("Food", "Pick n Pay Hypermarket");
+        GlobalDataFragment.mallGraph = new Graph();
+        GlobalDataFragment.mallGraph.loadFromFile(getContext().getResources().openRawResource(R.raw.greenstone_graph), 4.2);
+        GlobalDataFragment.shopDirectory = new ShopDirectory();
+        GlobalDataFragment.shopDirectory.loadFromFile(getContext().getResources().openRawResource(R.raw.shop_locations));
+        Shop shop = GlobalDataFragment.shopDirectory.getShop("Art, Antiques, Curios & Gifts", "Spilhaus");
+        //Shop shop = GlobalDataFragment.shopDirectory.getShop("Food", "Pick n Pay Hypermarket");
         Position start = new Position(657, 386, 1);
-        Route route = GlobalData.mallGraph.getRoute(start, shop);
+        Route route = GlobalDataFragment.mallGraph.getRoute(start, shop);
+        route.createDescription();
+
         float a = 10;
     }
 }

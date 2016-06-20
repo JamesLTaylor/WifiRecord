@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -24,6 +25,8 @@ Taken from https://sites.google.com/site/androidhowto/how-to-1/custom-scrollable
 public class ScrollImageView extends View {
     private long startTimeMillis;
     private String movementStatus = null;
+    private float originalTouchX;
+    private float originalTouchY;
 
     public enum ViewMode {LOCATE, RECORD}
     private RecordMenuMaker recordMenuMaker;
@@ -178,16 +181,20 @@ public class ScrollImageView extends View {
         shopRectPaint.setColor(Color.GRAY);
         shopRectPaint.setStrokeWidth(2);
         shopRectPaint.setStyle(Paint.Style.FILL);
-        shopRectPaint.setAlpha(200);
+        //shopRectPaint.setAlpha(200);
         shopRectPaint.setAntiAlias(true);
 
         shopTextPaint = new Paint();
-        shopTextPaint.setColor(Color.BLACK);
+        shopTextPaint.setColor(Color.GREEN);
         shopTextPaint.setTextSize(24);
+        textPaint.setTypeface(Typeface.create("Arial", Typeface.BOLD));
+        //<item name="android:fontFamily">sans-serif</item>
+        //<item name="android:textStyle">bold</item>
 
         routePaint = new Paint();
         routePaint.setColor(Color.RED);
-        routePaint.setStrokeWidth(2);
+        routePaint.setStrokeCap(Paint.Cap.ROUND);
+        routePaint.setStrokeWidth(8);
         routePaint.setStyle(Paint.Style.FILL);
         routePaint.setAlpha(200);
         routePaint.setAntiAlias(true);
@@ -342,33 +349,32 @@ public class ScrollImageView extends View {
     private boolean onTouchEventRecord(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             startClickTime = Calendar.getInstance().getTimeInMillis();
+            originalTouchX = event.getX();
+            originalTouchY = event.getY();
             latestTouchX = event.getX();
             latestTouchY = event.getY();
             return true;
         }
         else if (event.getAction()==MotionEvent.ACTION_UP){
             long clickDuration = Calendar.getInstance().getTimeInMillis() - startClickTime;
+            float x = event.getX();
+            float y = event.getY();
             float imageX = latestTouchX -mTotalX;
             float imageY = latestTouchY -mTotalY;
             // If there are no circles and there is a click add a cicle
             // If there is a circle and the click is near to it tell the activity to make a menu
             // If there is a circle but the click is not near it, replace the latest circle
-            if(clickDuration < 200) {
+            if(clickDuration < 200 && currentX!=null && currentY!=null) {  // Short click on circle
                 //click event has occurred
-                if (currentX!=null && currentY!=null) {
-                    double dist = Math.sqrt(Math.pow(currentX - imageX, 2) + Math.pow(currentY - imageY, 2));
-                    if (dist < 50.0) {
-                        recordMenuMaker.makeRecordMenu(currentX/density, currentY/density);
-                    }
-                    else {
-                        currentX = imageX;
-                        currentY = imageY;
-                    }
+                double dist = Math.sqrt(Math.pow(currentX - imageX, 2) + Math.pow(currentY - imageY, 2));
+                if (dist < 50.0) {
+                    recordMenuMaker.makeRecordMenu(currentX / density, currentY / density);
                 }
-                else {
-                    currentX = imageX;
-                    currentY = imageY;
-                }
+            }
+            else if (clickDuration>500 && Math.abs(originalTouchX-x)<10 && Math.abs(originalTouchY-y)<10)
+            {
+                 currentX = imageX;
+                 currentY = imageY;
             }
             mDeltaX = 0;
             mDeltaY = 0;
@@ -466,15 +472,28 @@ public class ScrollImageView extends View {
         if (route!=null)
         {
             for (int i = 0; i < (route.size()-1); i++) {
-                if (route.get(i).level == route.get(i+1).level && route.get(i).level == displayLevel)
-                {
-                    float x1 = route.get(i).x*density + mTotalX;
-                    float y1 = route.get(i).y*density + mTotalY;
-                    float x2 = route.get(i+1).x*density + mTotalX;
-                    float y2 = route.get(i+1).y*density + mTotalY;
-                    canvas.drawLine(x1, y1, x2, y2, routePaint);
+                if (route.get(i).level == displayLevel) {
+                    if (route.get(i).level == route.get(i + 1).level) {
+                        float x1 = route.get(i).x * density + mTotalX;
+                        float y1 = route.get(i).y * density + mTotalY;
+                        float x2 = route.get(i + 1).x * density + mTotalX;
+                        float y2 = route.get(i + 1).y * density + mTotalY;
+                        canvas.drawLine(x1, y1, x2, y2, routePaint);
+                    } else if (route.get(i).level > route.get(i + 1).level) {
+                        drawShopTag(canvas, "Go down", route.get(i).x * density, route.get(i).y * density);
+                    } else if (route.get(i).level < route.get(i + 1).level) {
+                        drawShopTag(canvas, "Go up", route.get(i).x * density, route.get(i).y * density);
+                    }
                 }
             }
+            for (Route.Description description : route.descriptions){
+                Position entranceLocation = description.shop.entranceLocations.get(description.entranceNumber);
+                canvas.drawLine(description.pathX*density, description.pathY*density, entranceLocation.x*density, entranceLocation.y*density, shopRectPaint);
+                if (entranceLocation.level == displayLevel) {
+                    drawShopTag(canvas, description.shop.getName(), entranceLocation.x*density, entranceLocation.y*density);
+                }
+            }
+            return;
         }
         
 
