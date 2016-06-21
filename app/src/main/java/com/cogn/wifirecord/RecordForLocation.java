@@ -7,71 +7,85 @@ import android.hardware.SensorManager;
 import android.util.Log;
 import android.util.SparseArray;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Class to estimate location of user based on Wifi readings.
  */
-public class RecordForLocation implements SensorEventListener {
-    private static final String TAG = "WIFI_LOCATE";
-    private final StoredLocationInfo storedLocationInfo;
+public class RecordForLocation extends RecordForLocationPersistent implements SensorEventListener {
     private RecordActivity callingActivity;
     private ProvidesWifiScan wifiScanner;
-    private boolean scanRunning = false;
-    private long delayMS = 100;
 
-    private Parameters params;
-
-    private double mAccel;
-    private double mAccelCurrent;
-    private double mAccelLast;
-    private boolean resetSinceMoveQueue;
-
-    //For location
-    private long offset;
-    private float currentX; // where the circle is currently drawn
-    private float currentY;
-    private float bestFitX; // the current best guess place
-    private float bestFitY;
-    private int bestFitLevel;
-    private int bestFitIndex;
-    private long bestFitTime;
-    private float bestFitScore;
-    private ReadingsQueue m_shortQueue;
-    private ReadingsQueue m_sinceMoveQueue;
-
-    // Values for drifting circle
-    private long prevTime = 0;
-    private float dx = 0;
-    private float dy = 0;
-    private float pxPerDelay;
+    private SparseArray<Float> oldResults;
+    private SparseArray<Float> results;
+    private List<String> scores;
+    private long startTimeMillis;
 
     public RecordForLocation(){
-        storedLocationInfo = null;
     }
 
-    public RecordForLocation(Parameters params,
-                             StoredLocationInfo storedLocationInfo,
-                             RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
+    public RecordForLocation(Parameters params, RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
         this.params = params;
         pxPerDelay = params.walkingPace*params.pxPerM * delayMS/1000;
-        this.storedLocationInfo = storedLocationInfo;
         this.callingActivity = callingActivity;
         this.wifiScanner = wifiScanner;
         mAccel = 0.00f;
         mAccelCurrent = SensorManager.GRAVITY_EARTH;
         mAccelLast = SensorManager.GRAVITY_EARTH;
+        resetSinceMoveQueue = false;
+        startTimeMillis = Calendar.getInstance().getTimeInMillis();
+        m_shortQueue = new ReadingsQueue(params.lengthMovingObs);
+        m_sinceMoveQueue = new ReadingsQueue(params.maxLengthStationaryObs);
+        scores = null;
+        bestFitIndex = -1;
+        oldResults = null;
     }
 
-    public void Stop() {
-        scanRunning = false;
-        Log.d(TAG, "SCAN STOPPED");
+    public void resetReferences(RecordActivity callingActivity, ProvidesWifiScan wifiScanner) {
+        this.callingActivity = callingActivity;
+        this.wifiScanner = wifiScanner;
+    }
+
+    public void stop() {
+        requestStop = true;
+        Log.d(TAG, "SCAN STOP REQUESTED. WAITING...");
+        for (int i = 0; i < 30; i++) {
+            if (!scanRunning) {
+                Log.d(TAG, "CONFIRMED SCAN STOP");
+                requestStop = false;
+                return;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        Log.d("TAG", "Scan did not stop after 3s, something is wrong.  request stop flag left on.");
+    }
+
+    /**
+     * Clears past readings
+     */
+    public void reset() {
+        stop();
+        mAccel = 0.00f;
+        mAccelCurrent = SensorManager.GRAVITY_EARTH;
+        mAccelLast = SensorManager.GRAVITY_EARTH;
+        resetSinceMoveQueue = false;
+        m_shortQueue = new ReadingsQueue(params.lengthMovingObs);
+        m_sinceMoveQueue = new ReadingsQueue(params.maxLengthStationaryObs);
+        scores = null;
+        bestFitIndex = -1;
+        oldResults = null;
+        start();
+    }
+
+    public void clearReferences() {
+        this.callingActivity = null;
+        this.wifiScanner = null;
     }
 
 
@@ -121,19 +135,17 @@ public class RecordForLocation implements SensorEventListener {
 
 
 
-    public void startScanning(){
-        resetSinceMoveQueue = false;
-        SparseArray<Float> oldResults = null;
-        SparseArray<Float> results;
-        long startTimeMillis = Calendar.getInstance().getTimeInMillis();
-        m_shortQueue = new ReadingsQueue(params.lengthMovingObs);
-        m_sinceMoveQueue = new ReadingsQueue(params.maxLengthStationaryObs);
-        List<String> scores = null;
-        bestFitIndex = -1;
+    private void startScanning(){
+        if (scanRunning) {
+            Log.d(TAG, "There is already a scan running, scan not started");
+            return;
+        }
+        scanRunning = true;
+        Log.d(TAG, "Scan started");
 
-        while (scanRunning){
+        while (!requestStop){
             offset = Calendar.getInstance().getTimeInMillis() - startTimeMillis;
-            results = wifiScanner.getScanResults(offset);
+            results = wifiScanner.getScanResults(Calendar.getInstance().getTimeInMillis());
             if (haveChanged(oldResults, results)) {
                 // Add the scan to the Queues
                 m_shortQueue.addNew(offset);
@@ -153,7 +165,7 @@ public class RecordForLocation implements SensorEventListener {
                 // Check which direction the bestGuess should move
                 updateMarkedLocation(true);
                 // Get the scores to display on the floorMap
-                scores = storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
+                scores = GlobalDataFragment.storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
             } else {
                 updateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
@@ -162,15 +174,18 @@ public class RecordForLocation implements SensorEventListener {
             if (scores!=null && !(bestFitIndex<0))
             {
                 float radius = (((offset - bestFitTime)/1000.0f) * params.walkingPace + params.errorAccomodationM) * params.pxPerM;
-                setPositionOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius);
+                if (GlobalDataFragment.continuousLocate) {
+                    setPositionOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius, false);
+                }
             }
 
             try { Thread.sleep(delayMS); }
             catch (InterruptedException e) {
                 e.printStackTrace();
-                scanRunning = false;
             }
         }
+        scanRunning = false;
+        Log.d(TAG, "SCAN STOPPED");
     }
 
     private void updateBestFit() {
@@ -178,8 +193,8 @@ public class RecordForLocation implements SensorEventListener {
         if (bestFitIndex<0) {
             setMovementStatusOnUIThread("Initial scan " + Integer.toString(m_sinceMoveQueue.size()) + "/3" );
             if (m_sinceMoveQueue.size()>=3) {
-                storedLocationInfo.updateScores(m_sinceMoveQueue.getSummary());
-                int maxIndex = storedLocationInfo.getBestScoreIndex();
+                GlobalDataFragment.storedLocationInfo.updateScores(m_sinceMoveQueue.getSummary());
+                int maxIndex = GlobalDataFragment.storedLocationInfo.getBestScoreIndex();
                 updateBestFit(maxIndex);
                 currentX = bestFitX; // Circle starts at best fit
                 currentY = bestFitY;
@@ -210,9 +225,9 @@ public class RecordForLocation implements SensorEventListener {
         // Find the unconstrained best fit
         observationSummary = queue.getSummary();
         double elapsedTime = (offset - bestFitTime);  // Time since the last time that the location was updated
-        storedLocationInfo.updateScores(m_shortQueue.getSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
-        int maxIndex = storedLocationInfo.getBestScoreIndex();
-        float maxScore = storedLocationInfo.getScoreAt(maxIndex);
+        GlobalDataFragment.storedLocationInfo.updateScores(m_shortQueue.getSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
+        int maxIndex = GlobalDataFragment.storedLocationInfo.getBestScoreIndex();
+        float maxScore = GlobalDataFragment.storedLocationInfo.getScoreAt(maxIndex);
 
         // Decide if the best fit is good enough to use
         boolean updatePos = false;
@@ -222,14 +237,14 @@ public class RecordForLocation implements SensorEventListener {
             if (maxScore > bestFitScore){
                 if (params.updateForSamePos) {
                     updatePos = true;
-                    Log.d(TAG, "Same place - update because score improved and settings allow");
+                    //Log.d(TAG, "Same place - update because score improved and settings allow");
                 } else {
                     updatePos = false;
-                    Log.d(TAG, "Same place - not update because improved but settings do not allow");
+                    //Log.d(TAG, "Same place - not update because improved but settings do not allow");
                 }
             } else {
                 updatePos = false;
-                Log.d(TAG, "Same place - not update because not improved score");
+                //Log.d(TAG, "Same place - not update because not improved score");
             }
         }
         // Have not been at current location long and new location does not offer a significant
@@ -237,20 +252,20 @@ public class RecordForLocation implements SensorEventListener {
         else if (maxScore<(bestFitScore + params.stickyMinImprovement) &&
                 (offset-bestFitTime)<=params.stickyMaxTime){
             updatePos = false;
-            Log.d(TAG, "Sticky time no update");
+            //Log.d(TAG, "Sticky time no update");
         }
         // Default case, there is a better score at a new location. Check whether it is reasonable
         // that we could have walked there in the time since the current location was recorded.
         else {
             // Find the distance to the position with the best score
-            double timeToThere = storedLocationInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
+            double timeToThere = GlobalDataFragment.storedLocationInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
 
             if (timeToThere < elapsedTime) {
                 updatePos = true;
-                Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                //Log.d(TAG, "Updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
             else {
-                Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
+                //Log.d(TAG, "Not updated because timeToThere=" + timeToThere + " and we have been here for " + (offset - bestFitTime));
             }
         }
         // Criteria met for position to be updated.
@@ -264,16 +279,18 @@ public class RecordForLocation implements SensorEventListener {
         bestFitTime = offset;
         //currentX = bestFitX; // Don't fall too far behind
         //currentY = bestFitY;
-        bestFitX = storedLocationInfo.getXAt(maxIndex);
-        bestFitY = storedLocationInfo.getYAt(maxIndex);
+        bestFitX = GlobalDataFragment.storedLocationInfo.getXAt(maxIndex);
+        bestFitY = GlobalDataFragment.storedLocationInfo.getYAt(maxIndex);
         bestFitIndex = maxIndex;
-        bestFitScore = storedLocationInfo.getScoreAt(bestFitIndex);
-        storedLocationInfo.setCurrent(bestFitIndex);
-        storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+        bestFitScore = GlobalDataFragment.storedLocationInfo.getScoreAt(bestFitIndex);
+        GlobalDataFragment.storedLocationInfo.setCurrent(bestFitIndex);
+        GlobalDataFragment.storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+        bestFitLevel = GlobalDataFragment.storedLocationInfo.getLevelAt(maxIndex);
 
-        if (callingActivity.getLevelID()!= storedLocationInfo.getLevelAt(maxIndex)) {
-            bestFitLevel = storedLocationInfo.getLevelAt(maxIndex);
-            setLevelOnUIThread(bestFitLevel);
+        if (callingActivity.getLevelID()!= GlobalDataFragment.storedLocationInfo.getLevelAt(maxIndex)) {
+            if (GlobalDataFragment.continuousLocate) {
+                setLevelOnUIThread(bestFitLevel);
+            }
             currentX = bestFitX; // Circle does not need to drift accross levels.
             currentY = bestFitY;
         }
@@ -303,19 +320,21 @@ public class RecordForLocation implements SensorEventListener {
     }
 
     private void setPositionOnUIThread(final List<String> scores, final float currentX, final float currentY,
-                                       final float bestGuessX, final float bestGuessY, final float bestGuessRadius)
+                                       final float bestGuessX, final float bestGuessY, final float bestGuessRadius,
+                                       final boolean centerViewOnCurrent)
     {
-        callingActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                callingActivity.updateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
-            }
-        });
+        if (callingActivity!=null) {
+            callingActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    callingActivity.updateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius, centerViewOnCurrent);
+                }
+            });
+        }
     }
 
     public void start() {
-        scanRunning = true;
-        Log.d(TAG, "SCAN STARTED");
+        Log.d(TAG, "SCAN START REQUESTED");
         new Thread(new Runnable() {
             public void run() {
                 startScanning();
@@ -323,94 +342,15 @@ public class RecordForLocation implements SensorEventListener {
         }).start();
     }
 
+    public void sendLocation() {
+        setLevelOnUIThread(bestFitLevel);
+        float radius = (((offset - bestFitTime)/1000.0f) * params.walkingPace + params.errorAccomodationM) * params.pxPerM;
+        List<String> scores = GlobalDataFragment.storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
+        setPositionOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius, true);
 
-
-    private class ReadingsQueue{
-
-        ArrayDeque<SparseArray<Float>> values;
-        int maxLength;
-
-        public ReadingsQueue(int maxLength)
-        {
-            this.maxLength = maxLength;
-            values = new ArrayDeque<>();
-
-        }
-
-        /**
-         * Returns the number of elements in this deque.
-         */
-        public int size(){ return values.size(); }
-
-        /**
-         * Clears the contents of the Queue
-         */
-        public void clear() { values.clear(); }
-
-        /**
-         * Adds a new empty record to the end of the queue and removes any records from the start
-         * that are too far in the past.
-         * @param latestTime the time since recording started (in ms)
-         */
-        public void addNew(long latestTime)
-        {
-            values.addLast(new SparseArray<Float>());
-            if (values.size()>maxLength) {
-                values.removeFirst();
-            }
-        }
-
-        public void updateEnd(Integer macID, Float reading)
-        {
-            values.peekLast().put(macID, reading);
-        }
-
-        private float getMean(List<Float> values) {
-            double total = 0.0;
-            for (Float value : values)
-                total += value;
-            return (float)(total/values.size());
-        }
-
-        /**
-         * Population standard deviation in case there is only one entry point
-         */
-        private float getStd(List<Float> values) {
-            double total = 0.0;
-            float mean = getMean(values);
-            for (Float value : values)
-                total += (value-mean)*(value-mean);
-            return (float)Math.sqrt(total/values.size());
-        }
-
-
-        public HashMap<Integer, List<Float>> getSummary() {
-            HashMap<Integer, ArrayList<Float>> aggregate = new HashMap<>();
-            for (SparseArray<Float> value : values)
-            {
-                for (int i=0; i<value.size(); i++) {
-                //for (Map.Entry<Integer, Float> entry : value. value.entrySet()) {
-                    if (!aggregate.containsKey(value.keyAt(i))) {
-                        aggregate.put(value.keyAt(i), new ArrayList<>(Arrays.asList(value.valueAt(i))));
-                    }
-                    else {
-                        aggregate.get(value.keyAt(i)).add(value.valueAt(i));
-                    }
-                }
-            }
-            HashMap<Integer, List<Float>> summary = new HashMap<>();
-            float p;
-            float mu;
-            float sigma;
-            for (Map.Entry<Integer, ArrayList<Float>> aggregateEntry : aggregate.entrySet()) {
-                p = aggregateEntry.getValue().size()/values.size();
-                mu = getMean(aggregateEntry.getValue());
-                sigma = getStd(aggregateEntry.getValue());
-                summary.put(aggregateEntry.getKey(), new ArrayList<>(Arrays.asList(p, mu, sigma)));
-            }
-            return summary;
-        }
     }
+
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
@@ -438,31 +378,4 @@ public class RecordForLocation implements SensorEventListener {
 
     }
 
-    public class Parameters {
-        //adjustable parameters
-        public float pxPerM;
-        public float walkingPace =  2.0f; // m/s FAST: 7.6km/h;
-        public float errorAccomodationM = 20.0f; // Distance that is allowed to move in zero time
-        public int lengthMovingObs = 3;
-        public int minLengthStationaryObs = 5;
-        public int maxLengthStationaryObs = 20;
-        public boolean updateForSamePos = false;
-        public float stickyMinImprovement = 5.0f; // The amount by which the new score must be better than the last during the sticky period
-        public int stickyMaxTime = 3000;
-
-        public Parameters(float pxPerM, float walkingPace, float errorAccomodationM, int lengthMovingObs,
-                          int minLengthStationaryObs, int maxLengthStationaryObs, boolean updateForSamePos,
-                          float stickyMinImprovement, int stickyMaxTime)
-        {
-            this.pxPerM = pxPerM;
-            this.walkingPace = walkingPace;
-            this.errorAccomodationM = errorAccomodationM;
-            this.lengthMovingObs = lengthMovingObs;
-            this.minLengthStationaryObs = minLengthStationaryObs;
-            this.maxLengthStationaryObs = maxLengthStationaryObs;
-            this.updateForSamePos = updateForSamePos;
-            this.stickyMinImprovement = stickyMinImprovement;
-            this.stickyMaxTime = stickyMaxTime;
-        }
-    }
 }

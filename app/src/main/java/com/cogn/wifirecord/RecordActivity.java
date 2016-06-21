@@ -18,7 +18,9 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -27,6 +29,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class RecordActivity extends Activity
@@ -39,6 +43,8 @@ public class RecordActivity extends Activity
     private static final String TAG = "WIFI";
     private static final int REQUEST_CODE_SEARCH_SHOP = 1001;
     private static final int REQUEST_CODE_LOAD_TEST = 1000;
+    private static final String PREF_AUTOSCROLL = "com.cogn.wifirecord.PREF_AUTOSCROLL";
+    private static final String PREF_SHOWDEBUG = "com.cogn.wifirecord.PREF_SHOWDEBUG";
 
     public static String sessionStartTime = null;
     private PopupMenuDialogFragment popupMenu;
@@ -52,18 +58,14 @@ public class RecordActivity extends Activity
     private String currentPlan;
     private String currentLevel;
     private WifiManager wifiManager;
-    private PreviousRecordings levelsAndPoints;
-    private StoredLocationInfo storedLocationInfo;
-    private RecordForLocation locator = null;
-    private int currentLevelID;
-    private ScrollImageView.ViewMode viewMode;
+
+    private int currentLevelID = -1000;
 
     // For movement detection
     private SensorManager sensorMan;
     private Sensor accelerometer;
-    private ScrollImageView.ViewMode savedViewModeToUse;
     private long lastLocationClickTime = 0;
-    private boolean continuousLocate = false;
+    private boolean secondClickTookPlace;
 
 
     @Override
@@ -92,11 +94,9 @@ public class RecordActivity extends Activity
         if (savedInstanceState!=null) {
             currentPlan = savedInstanceState.getString("currentPlan");
             levelDescriptionToUse = savedInstanceState.getString("currentLevel");
-            savedViewModeToUse = (ScrollImageView.ViewMode)savedInstanceState.getSerializable("viewMode");
         } else {
             currentPlan = mPrefs.getString("currentPlan", "Home");
             levelDescriptionToUse =  mPrefs.getString("currentLevel", "Downstairs");
-            savedViewModeToUse = ScrollImageView.ViewMode.RECORD;
         }
 
         if (sessionStartTime==null) {
@@ -116,21 +116,10 @@ public class RecordActivity extends Activity
         LinearLayout myLayout = (LinearLayout)findViewById(R.id.recordLayout);
 
         floorMapView = new ScrollImageView(this, this);
-
         floorMapView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT));
-
         myLayout.addView(floorMapView);
-        if (savedInstanceState!=null) {
-            Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
-            floorMapView.setState(floorMapViewState);
-        }
-        levelsAndPoints = new PreviousRecordings(currentPlan);
-        storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
-        setLevel(levelDescriptionToUse);
-        setViewMode(savedViewModeToUse);
-
 
         FragmentManager fm = getFragmentManager();
         GlobalDataFragment globalData = (GlobalDataFragment) fm.findFragmentByTag("data");
@@ -144,11 +133,23 @@ public class RecordActivity extends Activity
             GlobalDataFragment.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
             GlobalDataFragment.mallGraph = new Graph();
             GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
+            GlobalDataFragment.offlineWifiScanner = null;
+            GlobalDataFragment.storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
+        }
+
+        setLevel(levelDescriptionToUse);
+        floorMapView.setAutoScroll(mPrefs.getBoolean(PREF_AUTOSCROLL, true));
+        floorMapView.setShowDebug(mPrefs.getBoolean(PREF_SHOWDEBUG, true));
+        if (savedInstanceState!=null) {
+            Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
+            floorMapView.setState(floorMapViewState);
         }
     }
 
 
-
+    /**
+     * The points at which WIFI fingerprints are known.
+     */
     private InputStream getSummaryInputStream() {
         InputStream inputStream;
         if (currentPlan.equalsIgnoreCase("greenstone")) {
@@ -179,25 +180,29 @@ public class RecordActivity extends Activity
     protected void onResume() {
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
-        if (viewMode==ScrollImageView.ViewMode.LOCATE)
-        {
-            // TODO: use the old locator with history.
-            if (locator==null) {
-                locator = new RecordForLocation(getLocationParameters(currentPlan),
-                        storedLocationInfo, this, new WifiScanner(wifiManager, getMacInputStream()));
-                sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
-                locator.start();
-            }
+
+        if (GlobalDataFragment.locator==null) {
+            Log.d("LOC", "no previous locator found, starting a new one");
+            GlobalDataFragment.locator = new RecordForLocation(getLocationParameters(currentPlan),
+                    this, new WifiScanner(wifiManager, getMacInputStream()));
+        } else if (GlobalDataFragment.offlineWifiScanner!=null) {
+                Log.d("LOC","offline scanner found, using that");
+                GlobalDataFragment.locator.resetReferences(this, GlobalDataFragment.offlineWifiScanner);
+        } else {
+            Log.d("LOC","No locator started, becasue one is already running");
+            GlobalDataFragment.locator.resetReferences(this, new WifiScanner(wifiManager, getMacInputStream()));
         }
+        sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        GlobalDataFragment.locator.start();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (viewMode==ScrollImageView.ViewMode.LOCATE)
-        {
-            sensorMan.unregisterListener(locator);
-            locator.Stop();
+        if (GlobalDataFragment.locator!=null) {
+            sensorMan.unregisterListener(GlobalDataFragment.locator);
+            GlobalDataFragment.locator.stop();
+            GlobalDataFragment.locator.clearReferences();
         }
         PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
     }
@@ -207,14 +212,11 @@ public class RecordActivity extends Activity
         // Inflate the popupMenu; this adds items to the action bar if it is present.
         optionsMenu = menu;
         getMenuInflater().inflate(R.menu.record, menu);
-        if (viewMode == ScrollImageView.ViewMode.LOCATE) {
-            optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
-            optionsMenu.findItem(R.id.menu_record).setEnabled(true);
-        } else {
-            optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
-            optionsMenu.findItem(R.id.menu_record).setEnabled(false);
-        }
-        if (continuousLocate)
+
+        optionsMenu.findItem(R.id.menu_auto_scroll).setChecked(mPrefs.getBoolean(PREF_AUTOSCROLL, true));
+        optionsMenu.findItem(R.id.menu_show_debug).setChecked(mPrefs.getBoolean(PREF_SHOWDEBUG, true));
+
+        if (GlobalDataFragment.continuousLocate)
             optionsMenu.findItem(R.id.menu_locate).setIcon(R.drawable.ic_menu_mylocation_green);
         else
             optionsMenu.findItem(R.id.menu_locate).setIcon(R.drawable.ic_menu_mylocation);
@@ -235,8 +237,9 @@ public class RecordActivity extends Activity
      * For use by the locator to run on the UI thread.
      */
     public void updateLocateProgress(List<String> scores, float currentX, float currentY,
-                                     float bestGuessX, float bestGuessY, float bestGuessRadius) {
-        floorMapView.updateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius);
+                                     float bestGuessX, float bestGuessY, float bestGuessRadius,
+                                     boolean centerViewOnCurrent) {
+        floorMapView.updateLocateProgress(scores, currentX, currentY, bestGuessX, bestGuessY, bestGuessRadius, centerViewOnCurrent);
     }
 
     public void updateMovementStatus(String movementStatus) {
@@ -306,8 +309,7 @@ public class RecordActivity extends Activity
                 int stickyMaxTime = Integer.parseInt(getPref(R.string.key_location_sticky_max_time));
                 return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,
                         minLengthStationaryObs,maxLengthStationaryObs,updateForSamePos,stickyMinImprovement,stickyMaxTime);
-
-            }
+           }
             default: {
                 return null;
             }
@@ -323,13 +325,14 @@ public class RecordActivity extends Activity
         menuItem.setEnabled(true);
         boolean autoScroll = menuItem.isChecked();
         floorMapView.setAutoScroll(autoScroll);
-        optionsMenu.findItem(R.id.menu_reset_location).setEnabled(true);
-        optionsMenu.findItem(R.id.menu_reset_location).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-        setViewMode(ScrollImageView.ViewMode.LOCATE);
-        locator = new RecordForLocation(getLocationParameters(currentPlan),
-                storedLocationInfo, this, wifiScanner);
-        sensorMan.registerListener(locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        locator.start();
+        if (GlobalDataFragment.locator!=null) {
+            sensorMan.unregisterListener(GlobalDataFragment.locator);
+            GlobalDataFragment.locator.clearReferences();
+            GlobalDataFragment.locator.stop();
+        }
+        GlobalDataFragment.locator = new RecordForLocation(getLocationParameters(currentPlan), this, wifiScanner);
+        sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        GlobalDataFragment.locator.start();
     }
 
 
@@ -347,8 +350,28 @@ public class RecordActivity extends Activity
                 long clickDelay = (Calendar.getInstance().getTimeInMillis() - lastLocationClickTime);
                 Log.d(TAG,""+clickDelay);
                 if (clickDelay<600){
-                    continuousLocate = !continuousLocate;
+                    secondClickTookPlace = true;
+                    GlobalDataFragment.continuousLocate = !GlobalDataFragment.continuousLocate;
                     invalidateOptionsMenu();
+                } else {  // Single click.  use that to reset the location under continuous mode or show location otherwise
+                    secondClickTookPlace = false;
+                    if (!GlobalDataFragment.continuousLocate) {
+                        GlobalDataFragment.locator.sendLocation();
+                    }
+                    Timer timer = new Timer();
+                    TimerTask resetLocationIfNoSecondClick = new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (secondClickTookPlace) {
+                                Log.d(TAG, "600ms later.  locate reset cancelled");
+                            } else {
+                                Log.d(TAG, "600ms later.  Locate reset");
+                                GlobalDataFragment.locator.reset();
+                            }
+                            
+                        }
+                    };
+                    timer.schedule(resetLocationIfNoSecondClick, 600);
                 }
                 lastLocationClickTime = Calendar.getInstance().getTimeInMillis();
 
@@ -362,15 +385,15 @@ public class RecordActivity extends Activity
                 startActivityForResult(intent, REQUEST_CODE_SEARCH_SHOP);
                 return true;
             }
-            case R.id.menu_record: {
+            case R.id.menu_show_debug: {
                 // Start the locating thread
-                sensorMan.unregisterListener(locator);
-                locator.Stop();
-                setViewMode(ScrollImageView.ViewMode.RECORD);
-                optionsMenu.findItem(R.id.menu_auto_scroll).setEnabled(false);
-                optionsMenu.findItem(R.id.menu_reset_location).setEnabled(false);
-                optionsMenu.findItem(R.id.menu_reset_location).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
-                floorMapView.invalidate();
+                MenuItem menuItem = optionsMenu.findItem(R.id.menu_show_debug);
+                boolean showDebug = !menuItem.isChecked();
+                menuItem.setChecked(showDebug);
+                floorMapView.setShowDebug(showDebug);
+                SharedPreferences.Editor ed = mPrefs.edit();
+                ed.putBoolean(PREF_SHOWDEBUG, showDebug);
+                ed.commit();
                 return true;
             }
             case R.id.menu_auto_scroll: {
@@ -379,13 +402,14 @@ public class RecordActivity extends Activity
                 boolean autoScroll = !menuItem.isChecked();
                 menuItem.setChecked(autoScroll);
                 floorMapView.setAutoScroll(autoScroll);
+                SharedPreferences.Editor ed = mPrefs.edit();
+                ed.putBoolean(PREF_AUTOSCROLL, autoScroll);
+                ed.commit();
                 return true;
             }
-            case R.id.menu_reset_location: {
-                locator.Stop();
-                floorMapView.setViewMode(ScrollImageView.ViewMode.RECORD);
+            case R.id.menu_clear_route: {
+                GlobalDataFragment.latestRoute = null;
                 floorMapView.invalidate();
-                startLocating(new WifiScanner(wifiManager, getMacInputStream()));
                 return true;
             }
             case R.id.menu_continuous_record: {
@@ -472,7 +496,7 @@ public class RecordActivity extends Activity
                 else {
 
                 Route route = GlobalDataFragment.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
-                floorMapView.setRoute(route);
+                GlobalDataFragment.latestRoute = route;
                 floorMapView.invalidate();
             }
         }
@@ -483,7 +507,6 @@ public class RecordActivity extends Activity
      * Replaces the wifi readings with readings from a file and starts locating
      */
     private void runSimulatedPath(String pathFilename) {
-        setViewMode(ScrollImageView.ViewMode.LOCATE);
         Log.d(TAG,"Getting summary macs");
         String macFilename = pathFilename.replace("path", "macs");
         floorMapView.updateMovementStatus("Getting summary macs");
@@ -494,29 +517,13 @@ public class RecordActivity extends Activity
 
         Log.d(TAG,"Processing path");
         floorMapView.updateMovementStatus("Processing path");
-        final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(pathFilename, "Greenstone" , summaryMacs, pathMacs);
-        //InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_continuous_20160511_130140);
-        //final OfflineWifiScanner offlineWifiProvider = new OfflineWifiScanner(inputStream);
+        GlobalDataFragment.offlineWifiScanner = new OfflineWifiScanner(pathFilename, "Greenstone" , summaryMacs, pathMacs,
+                Calendar.getInstance().getTimeInMillis());
 
         Log.d(TAG,"Starting simulation");
         floorMapView.updateMovementStatus("Starting simulation");
         setLocation("Greenstone");
-        startLocating(offlineWifiProvider);
-    }
-
-    public void setViewMode(ScrollImageView.ViewMode newMode){
-        //Only update the option menu if it has already been created.  Seems to happen after onResume which calls this method.
-        if (optionsMenu!=null) {
-            if (newMode == ScrollImageView.ViewMode.LOCATE) {
-                optionsMenu.findItem(R.id.menu_locate).setEnabled(false);
-                optionsMenu.findItem(R.id.menu_record).setEnabled(true);
-            } else {
-                optionsMenu.findItem(R.id.menu_locate).setEnabled(true);
-                optionsMenu.findItem(R.id.menu_record).setEnabled(false);
-            }
-        }
-        viewMode = newMode;
-        floorMapView.setViewMode(viewMode);
+        startLocating(GlobalDataFragment.offlineWifiScanner);
     }
 
 
@@ -526,19 +533,19 @@ public class RecordActivity extends Activity
      */
     public void setLevel(int newLevelID)
     {
-        currentLevelID = newLevelID;
-        currentLevel = floorplans.get(currentPlan).DescriptionFromID(newLevelID);
-        updateFloorplan();
+        if (newLevelID!=currentLevelID) {
+            currentLevelID = newLevelID;
+            currentLevel = floorplans.get(currentPlan).DescriptionFromID(newLevelID);
+            updateFloorplan();
 
-        floorMapView.setPreviousPoints(
-                levelsAndPoints.GetXList(currentLevelID), levelsAndPoints.GetYList(currentLevelID),
-                storedLocationInfo.getXList(currentLevelID), storedLocationInfo.getYList(currentLevelID));
-        floorMapView.invalidate();
+            floorMapView.setPreviousPoints(GlobalDataFragment.storedLocationInfo.getXList(currentLevelID),
+                    GlobalDataFragment.storedLocationInfo.getYList(currentLevelID));
+            floorMapView.invalidate();
 
-        SharedPreferences.Editor ed = mPrefs.edit();
-        ed.putString("currentLevel", currentLevel);
-        ed.commit();
-
+            SharedPreferences.Editor ed = mPrefs.edit();
+            ed.putString("currentLevel", currentLevel);
+            ed.commit();
+        }
     }
 
     /**
@@ -555,8 +562,7 @@ public class RecordActivity extends Activity
 
         // read the files that store previous points
         // TODO: If this ends up being slow do it on another thread.
-        levelsAndPoints = new PreviousRecordings(currentPlan);
-        storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
+        GlobalDataFragment.storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         SharedPreferences.Editor ed = mPrefs.edit();
         ed.putString("currentPlan", currentPlan);
         ed.commit();
@@ -568,7 +574,6 @@ public class RecordActivity extends Activity
         super.onSaveInstanceState(outState);
         outState.putString("currentPlan", currentPlan);
         outState.putString("currentLevel", currentLevel);
-        outState.putSerializable("viewMode", viewMode);
         outState.putBundle("floorMapViewState", floorMapView.getState());
     }
 

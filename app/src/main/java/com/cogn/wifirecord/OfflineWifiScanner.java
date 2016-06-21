@@ -1,6 +1,7 @@
 package com.cogn.wifirecord;
 
 import android.os.Environment;
+import android.util.Log;
 import android.util.SparseArray;
 
 import java.io.BufferedReader;
@@ -13,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 
 public class OfflineWifiScanner implements ProvidesWifiScan {
@@ -21,12 +23,14 @@ public class OfflineWifiScanner implements ProvidesWifiScan {
     private Long[] times;
     private MacLookup summaryMacs = null;
     private MacLookup pathMacs = null;
+    private long startTime;
 
 
-    public OfflineWifiScanner(String filename, String location, MacLookup summaryMacs, MacLookup pathMacs)
+    public OfflineWifiScanner(String filename, String location, MacLookup summaryMacs, MacLookup pathMacs, long startTime)
     {
         this.summaryMacs = summaryMacs;
         this.pathMacs = pathMacs;
+        this.startTime = startTime;
         String folderName = "WifiRecord/"+location;
         File folder = new File(Environment.getExternalStorageDirectory(), folderName);
         File file = new File(folder, filename);
@@ -43,8 +47,12 @@ public class OfflineWifiScanner implements ProvidesWifiScan {
         loadFile(new InputStreamReader(inputStream));
     }
 
-    public SparseArray<Float> getScanResults(long atTime){
-        int index = Arrays.binarySearch(times, atTime);
+    public SparseArray<Float> getScanResults(long atAbsTime){
+        long atRelTime = atAbsTime - startTime;
+        if (atRelTime>times[times.length-1]+1000){
+            startTime = Calendar.getInstance().getTimeInMillis();
+        }
+        int index = Arrays.binarySearch(times, atRelTime);
         if (index>0) {
             if (index>=wifiReadings.size()) {
                 return wifiReadings.get(wifiReadings.size()-1);

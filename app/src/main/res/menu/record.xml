@@ -3,7 +3,7 @@
     tools:context=".RecordActivity" >
 
     <item android:id="@+id/menu_locate"
-        android:title="Locate Mode"
+        android:title="Locate"
         android:showAsAction="ifRoom"
         android:icon="@drawable/ic_menu_mylocation"/>
 
@@ -13,25 +13,27 @@
         android:icon="@drawable/ic_menu_search"
         />
 
-    <item android:id="@+id/menu_record"
-        android:title="Record Mode"
-        android:showAsAction="ifRoom"
-        android:enabled="false"/>
+    <item android:id="@+id/menu_clear_route"
+        android:title="Clear Route"
+        android:showAsAction="never"
+        android:enabled="true"/>
 
     <item android:id="@+id/menu_auto_scroll"
         android:checkable="true"
         android:checked="true"
         android:title="Auto scroll"
         android:showAsAction="never"
-        android:enabled="false"/>
+        android:enabled="true"/>
 
-    <item android:id="@+id/menu_reset_location"
-        android:title="Reset location"
+    <item android:id="@+id/menu_show_debug"
+        android:checkable="true"
+        android:checked="true"
+        android:title="Show debug data"
         android:showAsAction="never"
-        android:enabled="false"/>
+        android:enabled="true"/>
 
     <item android:id="@+id/menu_select_location"
-        android:title="Select Location"
+        android:title="Select Shopping Center"
         android:showAsAction="never" />
 
     <item android:id="@+id/menu_select_level"

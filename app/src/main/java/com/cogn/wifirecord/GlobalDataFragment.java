@@ -9,6 +9,11 @@ import android.os.Bundle;
 public class GlobalDataFragment extends Fragment {
     public static ShopDirectory shopDirectory;
     public static Graph mallGraph;
+    public static OfflineWifiScanner offlineWifiScanner;
+    public static StoredLocationInfo storedLocationInfo;
+    public static RecordForLocation locator = null;
+    public static boolean continuousLocate = false;
+    public static Route latestRoute = null;
 
     // this method is only called once for this fragment
     @Override
