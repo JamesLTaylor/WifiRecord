@@ -10,7 +10,7 @@ public class GlobalDataFragment extends Fragment {
     public static ShopDirectory shopDirectory;
     public static Graph mallGraph;
     public static OfflineWifiScanner offlineWifiScanner;
-    public static StoredLocationInfo storedLocationInfo;
+    public static WifiFingerprintInfo wifiFingerprintInfo;
     public static RecordForLocation locator = null;
     public static boolean continuousLocate = false;
     public static Route latestRoute = null;

@@ -165,7 +165,7 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
                 // Check which direction the bestGuess should move
                 updateMarkedLocation(true);
                 // Get the scores to display on the floorMap
-                scores = GlobalDataFragment.storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
+                scores = GlobalDataFragment.wifiFingerprintInfo.getScores(callingActivity.getLevelID()).scores;
             } else {
                 updateMarkedLocation(false); // No new reading, just drift the circle if required.
             }
@@ -193,8 +193,8 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
         if (bestFitIndex<0) {
             setMovementStatusOnUIThread("Initial scan " + Integer.toString(m_sinceMoveQueue.size()) + "/3" );
             if (m_sinceMoveQueue.size()>=3) {
-                GlobalDataFragment.storedLocationInfo.updateScores(m_sinceMoveQueue.getSummary());
-                int maxIndex = GlobalDataFragment.storedLocationInfo.getBestScoreIndex();
+                GlobalDataFragment.wifiFingerprintInfo.updateScores(m_sinceMoveQueue.getSummary());
+                int maxIndex = GlobalDataFragment.wifiFingerprintInfo.getBestScoreIndex();
                 updateBestFit(maxIndex);
                 currentX = bestFitX; // Circle starts at best fit
                 currentY = bestFitY;
@@ -220,14 +220,14 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
      */
     private void updateBestFitFromQueue(ReadingsQueue queue, String description){
         HashMap<Integer, List<Float>> observationSummary;
-        StoredLocationInfo.ReadingSummary locationSummary;
+        WifiFingerprintInfo.ReadingSummary locationSummary;
 
         // Find the unconstrained best fit
         observationSummary = queue.getSummary();
         double elapsedTime = (offset - bestFitTime);  // Time since the last time that the location was updated
-        GlobalDataFragment.storedLocationInfo.updateScores(m_shortQueue.getSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
-        int maxIndex = GlobalDataFragment.storedLocationInfo.getBestScoreIndex();
-        float maxScore = GlobalDataFragment.storedLocationInfo.getScoreAt(maxIndex);
+        GlobalDataFragment.wifiFingerprintInfo.updateScores(m_shortQueue.getSummary(), elapsedTime, 1000*params.errorAccomodationM/params.walkingPace);
+        int maxIndex = GlobalDataFragment.wifiFingerprintInfo.getBestScoreIndex();
+        float maxScore = GlobalDataFragment.wifiFingerprintInfo.getScoreAt(maxIndex);
 
         // Decide if the best fit is good enough to use
         boolean updatePos = false;
@@ -258,7 +258,7 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
         // that we could have walked there in the time since the current location was recorded.
         else {
             // Find the distance to the position with the best score
-            double timeToThere = GlobalDataFragment.storedLocationInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
+            double timeToThere = GlobalDataFragment.wifiFingerprintInfo.getTimeToCurrent(maxIndex) - params.errorAccomodationM / params.walkingPace;
 
             if (timeToThere < elapsedTime) {
                 updatePos = true;
@@ -279,15 +279,15 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
         bestFitTime = offset;
         //currentX = bestFitX; // Don't fall too far behind
         //currentY = bestFitY;
-        bestFitX = GlobalDataFragment.storedLocationInfo.getXAt(maxIndex);
-        bestFitY = GlobalDataFragment.storedLocationInfo.getYAt(maxIndex);
+        bestFitX = GlobalDataFragment.wifiFingerprintInfo.getXAt(maxIndex);
+        bestFitY = GlobalDataFragment.wifiFingerprintInfo.getYAt(maxIndex);
         bestFitIndex = maxIndex;
-        bestFitScore = GlobalDataFragment.storedLocationInfo.getScoreAt(bestFitIndex);
-        GlobalDataFragment.storedLocationInfo.setCurrent(bestFitIndex);
-        GlobalDataFragment.storedLocationInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
-        bestFitLevel = GlobalDataFragment.storedLocationInfo.getLevelAt(maxIndex);
+        bestFitScore = GlobalDataFragment.wifiFingerprintInfo.getScoreAt(bestFitIndex);
+        GlobalDataFragment.wifiFingerprintInfo.setCurrent(bestFitIndex);
+        GlobalDataFragment.wifiFingerprintInfo.updateDistances(bestFitIndex, params.pxPerM, params.walkingPace);
+        bestFitLevel = GlobalDataFragment.wifiFingerprintInfo.getLevelAt(maxIndex);
 
-        if (callingActivity.getLevelID()!= GlobalDataFragment.storedLocationInfo.getLevelAt(maxIndex)) {
+        if (callingActivity.getLevelID()!= GlobalDataFragment.wifiFingerprintInfo.getLevelAt(maxIndex)) {
             if (GlobalDataFragment.continuousLocate) {
                 setLevelOnUIThread(bestFitLevel);
             }
@@ -345,7 +345,7 @@ public class RecordForLocation extends RecordForLocationPersistent implements Se
     public void sendLocation() {
         setLevelOnUIThread(bestFitLevel);
         float radius = (((offset - bestFitTime)/1000.0f) * params.walkingPace + params.errorAccomodationM) * params.pxPerM;
-        List<String> scores = GlobalDataFragment.storedLocationInfo.getScores(callingActivity.getLevelID()).scores;
+        List<String> scores = GlobalDataFragment.wifiFingerprintInfo.getScores(callingActivity.getLevelID()).scores;
         setPositionOnUIThread(scores, currentX, currentY, bestFitX, bestFitY, radius, true);
 
     }

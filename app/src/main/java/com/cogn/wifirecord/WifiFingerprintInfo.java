@@ -24,7 +24,7 @@ import java.util.Map;
  * Becomes stateful once it is being used keeping track of the current distances to a selected point
  *
  */
-public class StoredLocationInfo {
+public class WifiFingerprintInfo {
     private static final float UNSCORED = -20000f;
     private ConnectionPoints connectionPoints;
     private List<ReadingSummary> summaryList;
@@ -33,9 +33,9 @@ public class StoredLocationInfo {
     private int currentIndex;
 
     /**
-     * Open a file and read the contents into a new StoredLocationInfo
+     * Open a file and read the contents into a new WifiFingerprintInfo
      */
-    public StoredLocationInfo(ConnectionPoints connectionPoints, InputStream summaryResourceStream)
+    public WifiFingerprintInfo(ConnectionPoints connectionPoints, InputStream summaryResourceStream)
     {
         this.connectionPoints = connectionPoints;
         summaryList = new ArrayList<>();

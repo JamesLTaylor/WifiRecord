@@ -2,14 +2,12 @@ package com.cogn.wifirecord;
 
 import android.test.ActivityTestCase;
 
-import junit.framework.TestCase;
-
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-public class StoredLocationInfoTest extends ActivityTestCase {
+public class WifiFingerprintInfoTest extends ActivityTestCase {
     public void testLoad()
     {
         ConnectionPoints connectionPoints = new ConnectionPoints();
@@ -18,7 +16,7 @@ public class StoredLocationInfoTest extends ActivityTestCase {
 
         InputStream summaryResourceStream = getInstrumentation().getContext().getResources().openRawResource(R.raw.greenstone_macs);
         InputStream summaryResourceStream2 = getInstrumentation().getContext().getResources().openRawResource(R.raw.greenstone_macs);
-        StoredLocationInfo list = new StoredLocationInfo(connectionPoints, summaryResourceStream);
+        WifiFingerprintInfo list = new WifiFingerprintInfo(connectionPoints, summaryResourceStream);
 
         HashMap<Integer,List<Float>> testReading = new HashMap<>();
         testReading.put(4, Arrays.asList(0.925f, -64.8648648648648f, 2.95151964672128f));

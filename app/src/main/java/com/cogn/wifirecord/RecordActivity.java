@@ -18,9 +18,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -134,7 +132,7 @@ public class RecordActivity extends Activity
             GlobalDataFragment.mallGraph = new Graph();
             GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
             GlobalDataFragment.offlineWifiScanner = null;
-            GlobalDataFragment.storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
+            GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         }
 
         setLevel(levelDescriptionToUse);
@@ -538,8 +536,8 @@ public class RecordActivity extends Activity
             currentLevel = floorplans.get(currentPlan).DescriptionFromID(newLevelID);
             updateFloorplan();
 
-            floorMapView.setPreviousPoints(GlobalDataFragment.storedLocationInfo.getXList(currentLevelID),
-                    GlobalDataFragment.storedLocationInfo.getYList(currentLevelID));
+            floorMapView.setPreviousPoints(GlobalDataFragment.wifiFingerprintInfo.getXList(currentLevelID),
+                    GlobalDataFragment.wifiFingerprintInfo.getYList(currentLevelID));
             floorMapView.invalidate();
 
             SharedPreferences.Editor ed = mPrefs.edit();
@@ -562,7 +560,7 @@ public class RecordActivity extends Activity
 
         // read the files that store previous points
         // TODO: If this ends up being slow do it on another thread.
-        GlobalDataFragment.storedLocationInfo = new StoredLocationInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
+        GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
         SharedPreferences.Editor ed = mPrefs.edit();
         ed.putString("currentPlan", currentPlan);
         ed.commit();
