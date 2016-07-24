@@ -17,6 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -49,6 +50,7 @@ public class ContinuousRecordActivity extends Activity
     private Spinner pathName;
     private Switch forwardBackwardSwitch;
     private static TextView textView;
+    private static boolean requestStop;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,7 +83,8 @@ public class ContinuousRecordActivity extends Activity
         Spinner spinner = (Spinner) findViewById(R.id.continuous_record_path_name);
         spinner.setAdapter(adapter);
 
-        findViewById(R.id.continuous_record_start).setOnClickListener(this);
+        findViewById(R.id.btn_continuous_record_start).setOnClickListener(this);
+        findViewById(R.id.btn_continuous_record_stop).setOnClickListener(this);
 
         if (scanRunning) {
             //LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
@@ -93,7 +96,8 @@ public class ContinuousRecordActivity extends Activity
             pathName.setSelection(pathNamePostion);
             pathName.setEnabled(false);
             forwardBackwardSwitch.setEnabled(false);
-            findViewById(R.id.continuous_record_start).setEnabled(false);
+            findViewById(R.id.btn_continuous_record_start).setEnabled(false);
+            findViewById(R.id.btn_continuous_record_stop).setEnabled(true);
 
         } else if (savedInstanceState!=null) {
             boolean forwardBackwardState = savedInstanceState.getBoolean("forwardBackwardState");
@@ -150,6 +154,21 @@ public class ContinuousRecordActivity extends Activity
     }
 
     public void stop() {
+        requestStop = true;
+        Toast.makeText(this, "SCAN STOP REQUESTED. WAITING...", Toast.LENGTH_SHORT);
+        for (int i = 0; i < 30; i++) {
+            if (!scanRunning) {
+                Toast.makeText(this, "CONFIRMED SCAN STOP", Toast.LENGTH_SHORT);
+                requestStop = false;
+                return;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        Toast.makeText(this, "\"Scan did not stop after 3s, something is wrong.  request stop flag left on.", Toast.LENGTH_SHORT);
         scanRunning = false;
     }
 
@@ -206,7 +225,7 @@ public class ContinuousRecordActivity extends Activity
         startTimeMillis = c.getTimeInMillis();
 
 
-        while (scanRunning){
+        while (!requestStop){
             scanned = wifiManager.getScanResults();
             if (haveChanged(oldScanned, scanned)) {
                 try {
@@ -239,8 +258,7 @@ public class ContinuousRecordActivity extends Activity
             }
             wifiManager.startScan();
         }
-        // Scan finished.  Take a copy of the macs.
-
+        scanRunning = false;
     }
 
     @Override
@@ -261,19 +279,28 @@ public class ContinuousRecordActivity extends Activity
 
     @Override
     public void onClick(View v) {
-        description = ((Spinner)findViewById(R.id.continuous_record_path_name)).getSelectedItem().toString().toUpperCase();
-        findViewById(R.id.continuous_record_path_name).setEnabled(false);
-        findViewById(R.id.continuous_record_direction).setEnabled(false);
-        findViewById(R.id.continuous_record_start).setEnabled(false);
-        //LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
-        //View view = findViewById(R.id.continuous_record_description);
-        //layout.removeView(view);
+        if (v.getId()==R.id.btn_continuous_record_start) {
+            description = ((Spinner) findViewById(R.id.continuous_record_path_name)).getSelectedItem().toString().toUpperCase();
+            findViewById(R.id.continuous_record_path_name).setEnabled(false);
+            findViewById(R.id.continuous_record_direction).setEnabled(false);
+            findViewById(R.id.btn_continuous_record_start).setEnabled(false);
+            findViewById(R.id.btn_continuous_record_stop).setEnabled(true);
+            //LinearLayout layout = (LinearLayout) findViewById(R.id.continuous_record_layout);
+            //View view = findViewById(R.id.continuous_record_description);
+            //layout.removeView(view);
 
-        String scanStartTime = DataReadWrite.timeStampFormat.format(Calendar.getInstance().getTime());
-        filename = location.toLowerCase().trim() + "_" + scanStartTime + "_" + deviceName + "_path.txt";
-        macName = location.toLowerCase().trim() + "_" + scanStartTime + "_" + deviceName + "_macs.txt";
-        macLookup = new MacLookup(location, macName);
-        start();
+            String scanStartTime = DataReadWrite.timeStampFormat.format(Calendar.getInstance().getTime());
+            filename = location.toLowerCase().trim() + "_" + scanStartTime + "_" + deviceName + "_path.txt";
+            macName = location.toLowerCase().trim() + "_" + scanStartTime + "_" + deviceName + "_macs.txt";
+            macLookup = new MacLookup(location, macName);
+            start();
+        } else if (v.getId()==R.id.btn_continuous_record_stop) {
+            findViewById(R.id.continuous_record_path_name).setEnabled(true);
+            findViewById(R.id.continuous_record_direction).setEnabled(true);
+            findViewById(R.id.btn_continuous_record_start).setEnabled(true);
+            findViewById(R.id.btn_continuous_record_stop).setEnabled(false);
+            stop();
+        }
     }
 
     private String[] getPathDescriptionsFromFile() {

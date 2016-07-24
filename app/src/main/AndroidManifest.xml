@@ -21,7 +21,11 @@
             </intent-filter>
         </activity>
         <activity android:name=".ManualRecordActivity" />
-        <activity android:name=".ContinuousRecordActivity" />
+        <activity
+            android:name=".ContinuousRecordActivity"
+            android:label="Record along path"
+            android:screenOrientation="portrait"
+            />
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings" />

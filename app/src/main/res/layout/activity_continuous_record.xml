@@ -40,17 +40,30 @@
             android:id="@+id/continuous_record_description">
             android:completionThreshold="0"
         </com.cogn.wifirecord.InstantAutoComplete>-->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
-            android:id = "@+id/continuous_record_start"
+            android:enabled="true"
+            android:id = "@+id/btn_continuous_record_start"
             android:text ="Start"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:enabled="false"
+            android:id = "@+id/btn_continuous_record_stop"
+            android:text ="Stop"/>
+        </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Scanning..."
+            android:text="Scan will start on "
             android:id="@+id/continuous_record_info"
             android:layout_gravity="center_horizontal"
             android:clickable="true"/>
