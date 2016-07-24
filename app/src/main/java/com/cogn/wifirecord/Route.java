@@ -8,7 +8,7 @@ import java.util.List;
  * A route through a shopping center
  */
 public class Route {
-    List<Position> points;
+    List<Position> pathPoints;
     List<Double> pathFractions;
 
     double pathLength;
@@ -18,7 +18,7 @@ public class Route {
 
     public Route(double pxPerM){
         this.pxPerM = pxPerM;
-        points = new ArrayList<>();
+        pathPoints = new ArrayList<>();
     }
 
     public double getPathLength() {
@@ -27,12 +27,12 @@ public class Route {
 
 
     public void addPoint(Position position){
-        points.add(position);
+        pathPoints.add(position);
     }
 
     public Route copy(){
         Route cloned = new Route(pxPerM);
-        for (Position position : points){
+        for (Position position : pathPoints){
             cloned.addPoint(new Position(position.x, position.y, position.level));
         }
         cloned.finalizeConstruction();
@@ -40,11 +40,11 @@ public class Route {
     }
 
     public void finalizeConstruction(){
-        pathFractions = new ArrayList<>(points.size());
+        pathFractions = new ArrayList<>(pathPoints.size());
         pathFractions.add(0, 0.0);
-        for (int i = 0; i < points.size()-1; i++) {
-            double dx = points.get(i+1).x - points.get(i).x;
-            double dy = points.get(i+1).y - points.get(i).y;
+        for (int i = 0; i < pathPoints.size()-1; i++) {
+            double dx = pathPoints.get(i+1).x - pathPoints.get(i).x;
+            double dy = pathPoints.get(i+1).y - pathPoints.get(i).y;
             double frac = pathFractions.get(i) + Math.sqrt(dx*dx + dy*dy);
             pathFractions.add(i+1, frac);
         }
@@ -90,37 +90,45 @@ public class Route {
 
     /**
      *
-     * @param point
+     * @param referencePoint the point being compared to the path
      * @return a vector with elements:
      *              0 - minimum distance to path
      *              1 - the fraction along the path at which the closest point
      *              2 - the closest point, x value
      *              3 - the closest point, y value
      */
-    private Double[] closest(Position point)
+    private Double[] closest(Position referencePoint)
     {
         Double minD = 1e9;
-        Double closestX = (double)points.get(0).x;
-        Double closestY = (double)points.get(0).y;
-        for (int i = 0; i < points.size()-1; i++) {
-            Double[] dxy = pointToSegment(point, points.get(i), points.get(i+1));
-            if (dxy[0]<minD){
-                minD = dxy[0];
-                closestX = dxy[1];
-                closestY = dxy[2];
+        Double closestX = (double) pathPoints.get(0).x;
+        Double closestY = (double) pathPoints.get(0).y;
+        for (int i = 0; i < pathPoints.size()-1; i++) {
+            if((pathPoints.get(i).level ==  pathPoints.get(i+1).level) && pathPoints.get(i).level == referencePoint.level) {
+                Double[] dxy = pointToSegment(referencePoint, pathPoints.get(i), pathPoints.get(i + 1));
+
+                if (dxy[0] < minD) {
+                    minD = dxy[0];
+                    closestX = dxy[1];
+                    closestY = dxy[2];
+                }
             }
         }
-        Double frac = reverseInterp(new Position(closestX.floatValue(), closestY.floatValue(), point.level));
+        Double frac = reverseInterp(new Position(closestX.floatValue(), closestY.floatValue(), referencePoint.level));
         return new Double[]{minD, frac, closestX, closestY};
     }
 
+    /**
+     * Given a point on a path, find the fraction along the path that it is found
+     * @param point the point that will be interpolated.
+     * @return a number between 0 and 1
+     */
     private Double reverseInterp(Position point) {
-        for (int i = 0; i < points.size()-1; i++) {
-            if ((point.x>= points.get(i).x && point.x<= points.get(i+1).x || point.x>= points.get(i+1).x && point.x<= points.get(i).x) &&
-                    (point.y>= points.get(i).y && point.y<= points.get(i+1).y || point.y>= points.get(i+1).y && point.y<= points.get(i).y))
+        for (int i = 0; i < pathPoints.size()-1; i++) {
+            if ((point.x>= pathPoints.get(i).x && point.x<= pathPoints.get(i+1).x || point.x>= pathPoints.get(i+1).x && point.x<= pathPoints.get(i).x) &&
+                    (point.y>= pathPoints.get(i).y && point.y<= pathPoints.get(i+1).y || point.y>= pathPoints.get(i+1).y && point.y<= pathPoints.get(i).y))
             {
-                float dx  = point.x - points.get(i).x;
-                float dy = point.y - points.get(i).y;
+                float dx  = point.x - pathPoints.get(i).x;
+                float dy = point.y - pathPoints.get(i).y;
                 return pathFractions.get(i) + Math.sqrt(dx*dx + dy*dy)/pathLength;
             }
         }
@@ -165,11 +173,11 @@ public class Route {
 
     public Position get(int location)
     {
-        return points.get(location);
+        return pathPoints.get(location);
     }
 
     public int size() {
-        return points.size();
+        return pathPoints.size();
     }
 
     public class Description implements  Comparable<Description>{
