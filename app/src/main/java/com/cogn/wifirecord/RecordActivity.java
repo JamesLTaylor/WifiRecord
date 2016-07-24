@@ -18,7 +18,11 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -34,7 +38,7 @@ import java.util.TimerTask;
 public class RecordActivity extends Activity
     implements PopupMenuDialogFragment.OptionSetListener,
         ScrollImageView.RecordMenuMaker,
-        SharedPreferences.OnSharedPreferenceChangeListener {
+        SharedPreferences.OnSharedPreferenceChangeListener, AdapterView.OnItemSelectedListener {
 
     private static final String RO_RECORD = "Record Wifi at this Point";
     private static final String RO_DELETE = "Delete this point";
@@ -64,6 +68,7 @@ public class RecordActivity extends Activity
     private Sensor accelerometer;
     private long lastLocationClickTime = 0;
     private boolean secondClickTookPlace;
+    private Spinner spinnerCurrentLevel;
 
 
     @Override
@@ -111,13 +116,21 @@ public class RecordActivity extends Activity
 
         //Add floormap view
         setContentView(R.layout.activity_record);
-        LinearLayout myLayout = (LinearLayout)findViewById(R.id.recordLayout);
+        LinearLayout myLayout = (LinearLayout)findViewById(R.id.layout_canvas);
 
         floorMapView = new ScrollImageView(this, this);
         floorMapView.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT));
         myLayout.addView(floorMapView);
+
+        spinnerCurrentLevel = (Spinner)findViewById(R.id.spinner_current_level);
+        spinnerCurrentLevel.setOnItemSelectedListener(this);
+
+        String[] categoryArray = new String[floorplans.get(currentPlan).descriptions.size()];
+        floorplans.get(currentPlan).descriptions.toArray(categoryArray);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categoryArray);
+        spinnerCurrentLevel.setAdapter(adapter);
 
         FragmentManager fm = getFragmentManager();
         GlobalDataFragment globalData = (GlobalDataFragment) fm.findFragmentByTag("data");
@@ -211,6 +224,8 @@ public class RecordActivity extends Activity
         optionsMenu = menu;
         getMenuInflater().inflate(R.menu.record, menu);
 
+        optionsMenu.findItem(R.id.menu_show_debug).setVisible(false);
+
         optionsMenu.findItem(R.id.menu_auto_scroll).setChecked(mPrefs.getBoolean(PREF_AUTOSCROLL, true));
         optionsMenu.findItem(R.id.menu_show_debug).setChecked(mPrefs.getBoolean(PREF_SHOWDEBUG, true));
 
@@ -219,6 +234,7 @@ public class RecordActivity extends Activity
         else
             optionsMenu.findItem(R.id.menu_locate).setIcon(R.drawable.ic_menu_mylocation);
         return true;
+
     }
 
     public void updateRecordProgress(String newText) {
@@ -421,7 +437,7 @@ public class RecordActivity extends Activity
                 startActivity(intent);
                 return true;
             }
-            case R.id.menu_select_location: {
+            case R.id.menu_select_shopping_center: {
                 // TODO: Mustn't change location while locator is running.
                 popupMenu = new PopupMenuDialogFragment();
                 Bundle options = new Bundle();
@@ -638,6 +654,16 @@ public class RecordActivity extends Activity
             String nStr = sharedPreferences.getString(getString(R.string.key_number_of_scans), "5");
             Log.d("TAG",nStr);
         }
+
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        //TODO: Implement
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
 
     }
 

@@ -138,7 +138,7 @@ public class ScrollImageView extends View {
         currentPaint.setColor(Color.RED);
         currentPaint.setStrokeWidth(2);
         currentPaint.setStyle(Paint.Style.FILL);
-        currentPaint.setAlpha(200);
+        currentPaint.setAlpha(100);
         currentPaint.setAntiAlias(true);
 
         shopNames = new ArrayList<>();
@@ -149,15 +149,12 @@ public class ScrollImageView extends View {
         shopRectPaint.setColor(Color.GRAY);
         shopRectPaint.setStrokeWidth(2);
         shopRectPaint.setStyle(Paint.Style.FILL);
-        //shopRectPaint.setAlpha(200);
         shopRectPaint.setAntiAlias(true);
 
         shopTextPaint = new Paint();
         shopTextPaint.setColor(Color.GREEN);
         shopTextPaint.setTextSize(24);
         textPaint.setTypeface(Typeface.create("Arial", Typeface.BOLD));
-        //<item name="android:fontFamily">sans-serif</item>
-        //<item name="android:textStyle">bold</item>
 
         routePaint = new Paint();
         routePaint.setColor(Color.RED);
@@ -403,7 +400,7 @@ public class ScrollImageView extends View {
         if (mPadding > newTotalY && newTotalY > getMeasuredHeight() - mImage.getHeight() - mPadding)
             mTotalY += mDeltaY;
 
-        // Add shop names and path
+        // Add shop names and path to canvas
         if (shopNames.size() > 0) {
             for (int i = 0; i < shopNames.size(); i++) {
                 if (shopLevels.get(i) == displayLevel) {
@@ -440,7 +437,7 @@ public class ScrollImageView extends View {
 
         // Latest circle
         if (currentX != null && currentY != null) {
-            canvas.drawCircle(currentX + mTotalX, currentY + mTotalY, 10 * density, currentPaint);
+            canvas.drawCircle(currentX + mTotalX, currentY + mTotalY, 20 * density, currentPaint);
         }
 
         // The current scan progress
@@ -520,6 +517,7 @@ public class ScrollImageView extends View {
      */
     private void drawShopTag(Canvas canvas, String name, float x, float y) {
         Rect textBounds = new Rect();
+
         shopTextPaint.getTextBounds(name, 0, name.length(), textBounds);
 
         float l = x - textBounds.width() / 2 + mTotalX - 5; // left
@@ -529,6 +527,10 @@ public class ScrollImageView extends View {
 
         RectF rectF = new RectF(l, t, r, b);
         int cornersRadius = 5;
+
+        canvas.save();
+        canvas.rotate(-45, x + mTotalX, y + mTotalY);
+
         canvas.drawRoundRect(
                 rectF, // rect
                 cornersRadius, // rx
@@ -536,6 +538,7 @@ public class ScrollImageView extends View {
                 shopRectPaint // Paint
         );
         canvas.drawText(name, l + 5, b - 5, shopTextPaint);
+        canvas.restore();
     }
 
 

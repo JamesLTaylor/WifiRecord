@@ -1,10 +1,25 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".RecordActivity"
-    android:id="@+id/recordLayout"
-    android:orientation="vertical">
+    tools:context=".RecordActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/layout_canvas"
+        android:orientation="vertical">
+
+    </LinearLayout>
+
+    <Spinner
+        android:id="@+id/spinner_current_level"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_margin="5dp"
+        android:alpha="50"/>
 
 
     <!--<ScrollView
@@ -23,4 +38,4 @@
     </ScrollView>
     -->
 
-</LinearLayout>
+</RelativeLayout>

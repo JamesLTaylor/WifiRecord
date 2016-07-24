@@ -13,56 +13,72 @@
         android:icon="@drawable/ic_menu_search"
         />
 
-    <item android:id="@+id/menu_clear_route"
-        android:title="Clear Route"
-        android:showAsAction="never"
-        android:enabled="true"/>
+    <group
+        android:id="@+id/menu_grp_common">
 
-    <item android:id="@+id/menu_auto_scroll"
-        android:checkable="true"
-        android:checked="true"
-        android:title="Auto scroll"
-        android:showAsAction="never"
-        android:enabled="true"/>
+        <item android:id="@+id/menu_clear_route"
+            android:title="Clear route"
+            android:showAsAction="never"
+            android:enabled="true"/>
 
-    <item android:id="@+id/menu_show_debug"
-        android:checkable="true"
-        android:checked="true"
-        android:title="Show debug data"
-        android:showAsAction="never"
-        android:enabled="true"/>
+        <item android:id="@+id/menu_select_shopping_center"
+            android:title="Select shopping center"
+            android:showAsAction="never" />
 
-    <item android:id="@+id/menu_select_location"
-        android:title="Select Shopping Center"
-        android:showAsAction="never" />
+        <item android:id="@+id/menu_select_level"
+            android:title="Select level"
+            android:showAsAction="never" />
 
-    <item android:id="@+id/menu_select_level"
-        android:title="Select Level"
-        android:showAsAction="never" />
+    </group>
 
-    <item android:id="@+id/menu_continuous_record"
-        android:title="Continuous Record"
-        android:showAsAction="never"
-        />
+    <group
+        android:id="@+id/menu_grp_developer">
 
-    <item android:id="@+id/menu_manual_record"
-        android:title="Manual"
-        android:showAsAction="never"
-    />
+        <item
+            android:id="@+id/menu_developer_options"
+            android:title="Developer Options:"
+            android:enabled="false"
+            android:showAsAction="never"/>
 
-    <item android:id="@+id/menu_test"
-        android:title="Test/simulate"
-        android:showAsAction="never">
-        <!--<menu>
-            <item android:id="@+id/test_path1"
-                android:title="Path 1"/>
-            <item android:id="@+id/test_path2"
-                android:title="Path 2"/>
-        </menu>-->
-    </item>
+        <item android:id="@+id/menu_auto_scroll"
+            android:checkable="true"
+            android:checked="true"
+            android:title="Auto scroll"
+            android:showAsAction="never"
+            android:enabled="true"/>
 
-    <item android:id="@+id/action_settings"
-        android:title="@string/action_settings"
-        android:orderInCategory="100"
-        android:showAsAction="never" />
+        <item android:id="@+id/menu_show_debug"
+            android:checkable="true"
+            android:checked="true"
+            android:title="Show debug data"
+            android:showAsAction="never"
+            android:enabled="true"/>
+
+        <item android:id="@+id/menu_continuous_record"
+            android:title="Continuous Record"
+            android:showAsAction="never"
+            />
+
+        <item android:id="@+id/menu_manual_record"
+            android:title="Manual"
+            android:showAsAction="never"
+            />
+
+        <item android:id="@+id/menu_test"
+            android:title="Test/simulate"
+            android:showAsAction="never">
+            <!--<menu>
+                <item android:id="@+id/test_path1"
+                    android:title="Path 1"/>
+                <item android:id="@+id/test_path2"
+                    android:title="Path 2"/>
+            </menu>-->
+        </item>
+
+        <item android:id="@+id/action_settings"
+            android:title="@string/action_settings"
+            android:orderInCategory="100"
+            android:showAsAction="never" />
+    </group>
+
 </menu>
