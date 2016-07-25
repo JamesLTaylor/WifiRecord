@@ -45,12 +45,11 @@ public class PopupMenuDialogFragment extends DialogFragment implements View.OnCl
         LinearLayout linLayout=new LinearLayout(getActivity());
         linLayout.setOrientation(LinearLayout.VERTICAL);
 
-        Iterator<String> options = getArguments().getStringArrayList("options").iterator();
+        String[] options = getArguments().getStringArray("options");
 
-        while (options.hasNext())
-        {
+        for (String option : options){
             Button b1 = new Button(getActivity());
-            b1.setText(options.next());
+            b1.setText(option);
             b1.setPadding(10, 10, 10, 10);
             b1.setOnClickListener(this);
             linLayout.addView(b1);

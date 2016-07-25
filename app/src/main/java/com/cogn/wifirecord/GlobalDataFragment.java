@@ -7,6 +7,7 @@ import android.os.Bundle;
  * Objects used by all activities
  */
 public class GlobalDataFragment extends Fragment {
+    public static ShoppingCenter currentCenter;
     public static ShopDirectory shopDirectory;
     public static Graph mallGraph;
     public static OfflineWifiScanner offlineWifiScanner;

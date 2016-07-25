@@ -25,10 +25,6 @@
             android:title="Select shopping center"
             android:showAsAction="never" />
 
-        <item android:id="@+id/menu_select_level"
-            android:title="Select level"
-            android:showAsAction="never" />
-
     </group>
 
     <group

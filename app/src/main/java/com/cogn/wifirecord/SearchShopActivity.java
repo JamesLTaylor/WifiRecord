@@ -24,9 +24,6 @@ public class SearchShopActivity extends Activity implements AdapterView.OnItemSe
         setContentView(R.layout.activity_search_shop);
         getActionBar().setDisplayHomeAsUpEnabled(true);
 
-        Intent myIntent = getIntent();
-        //String location = myIntent.getStringExtra("location");
-
         categorySpinner = (Spinner) findViewById(R.id.shop_search_category);
         shopNameSpinner = (Spinner) findViewById(R.id.shop_search_shopname);
 

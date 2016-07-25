@@ -35,8 +35,7 @@ public class RecordActivityTest {
             @Override
             public void run() {
                 Debug.startMethodTracing("calc");
-                //record.setLocation("Home");
-                record.setLocation("Greenstone");
+                record.setCurrentShoppingCenter("Greenstone");
                 record.startLocating(offlineWifiProvider);
                 Debug.stopMethodTracing();
             }

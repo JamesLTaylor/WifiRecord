@@ -59,8 +59,7 @@ public class ContinuousRecordActivity extends Activity
         pathName = (Spinner)findViewById(R.id.continuous_record_path_name);
         forwardBackwardSwitch = (Switch)findViewById(R.id.continuous_record_direction);
         textView = (TextView)findViewById(R.id.continuous_record_info);
-        Intent myIntent = getIntent();
-        location = myIntent.getStringExtra("location");
+
         wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
         deviceName = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_general_device_name), "");
         if (deviceName.length() < 4) {

@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.wifi.WifiManager;
@@ -23,14 +22,10 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
-
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -43,22 +38,23 @@ public class RecordActivity extends Activity
     private static final String RO_RECORD = "Record Wifi at this Point";
     private static final String RO_DELETE = "Delete this point";
     private static final String TAG = "WIFI";
-    private static final int REQUEST_CODE_SEARCH_SHOP = 1001;
+
     private static final int REQUEST_CODE_LOAD_TEST = 1000;
+    private static final int REQUEST_CODE_SEARCH_SHOP = 1001;
+    private static final int REQUEST_CODE_SELECT_CENTER = 1002;
+
     private static final String PREF_AUTOSCROLL = "com.cogn.wifirecord.PREF_AUTOSCROLL";
     private static final String PREF_SHOWDEBUG = "com.cogn.wifirecord.PREF_SHOWDEBUG";
+    private static final String SAVED_SHOPPING_CENTER_NAME = "com.cogn.wifirecord.SAVED_SHOPPING_CENTER_NAME";
+    private static final String SAVED_SHOPPING_CENTER_LEVEL = "com.cogn.wifirecord.SAVED_SHOPPING_CENTER_LEVEL";
+    private static final String SAVED_FLOORMAP_STATE = "com.cogn.wifirecord.SAVED_FLOORMAP_STATE";
 
-    public static String sessionStartTime = null;
     private PopupMenuDialogFragment popupMenu;
     private Menu optionsMenu;
     private ScrollImageView floorMapView;
     private SharedPreferences mPrefs;
 
-    private Map<String, FloorPlanImageList> floorplans = new HashMap<>();
-    private Map<String, ConnectionPoints> locationConnectionPoints = new HashMap<>();
     private ArrayList<String> recordOptions = new ArrayList<>(Arrays.asList(RO_RECORD, RO_DELETE));
-    private String currentPlan;
-    private String currentLevel;
     private WifiManager wifiManager;
 
     private int currentLevelID = -1000;
@@ -69,6 +65,7 @@ public class RecordActivity extends Activity
     private long lastLocationClickTime = 0;
     private boolean secondClickTookPlace;
     private Spinner spinnerCurrentLevel;
+    public String sessionStartTime;
 
 
     @Override
@@ -76,31 +73,8 @@ public class RecordActivity extends Activity
         super.onCreate(savedInstanceState);
         //TODO : Check SmartNavi
         // Data
-        floorplans.put("Greenstone", new FloorPlanImageList());
-        floorplans.get("Greenstone").add(0, "Lower Level", R.drawable.greenstone_lower);
-        floorplans.get("Greenstone").add(1, "Upper Level", R.drawable.greenstone_upper);
-
-        floorplans.put("Home", new FloorPlanImageList());
-        floorplans.get("Home").add(0, "Downstairs", R.drawable.house_lower);
-        floorplans.get("Home").add(1, "Upstairs", R.drawable.house_upper);
-
-        locationConnectionPoints.put("Greenstone", new ConnectionPoints());
-        locationConnectionPoints.get("Greenstone").add(0, 530, 320, 1,570, 660);
-        locationConnectionPoints.get("Greenstone").add(0, 1020, 425, 1,1100, 690);
-        locationConnectionPoints.put("Home", new ConnectionPoints());
-        locationConnectionPoints.get("Home").add(0, 360, 490, 1,252, 54);
 
         mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-        // Defaults:
-        String levelDescriptionToUse;
-        if (savedInstanceState!=null) {
-            currentPlan = savedInstanceState.getString("currentPlan");
-            levelDescriptionToUse = savedInstanceState.getString("currentLevel");
-        } else {
-            currentPlan = mPrefs.getString("currentPlan", "Home");
-            levelDescriptionToUse =  mPrefs.getString("currentLevel", "Downstairs");
-        }
 
         if (sessionStartTime==null) {
             Calendar c = Calendar.getInstance();
@@ -114,6 +88,34 @@ public class RecordActivity extends Activity
         sensorMan = (SensorManager)getSystemService(SENSOR_SERVICE);
         accelerometer = sensorMan.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
+
+        String centerName;
+        int level;
+        if (savedInstanceState!=null) {
+            centerName = savedInstanceState.getString(SAVED_SHOPPING_CENTER_NAME);
+            level = savedInstanceState.getInt(SAVED_SHOPPING_CENTER_LEVEL);
+        } else {
+            centerName = mPrefs.getString(SAVED_SHOPPING_CENTER_NAME, "Greenstone");
+            level = mPrefs.getInt(SAVED_SHOPPING_CENTER_LEVEL, 0);
+        }
+
+        // create the global data fragment and data the first time
+        FragmentManager fm = getFragmentManager();
+        GlobalDataFragment globalData = (GlobalDataFragment) fm.findFragmentByTag("data");
+        if (globalData == null) {
+            // add the fragment
+            globalData = new GlobalDataFragment();
+            fm.beginTransaction().add(globalData, "data").commit();
+            GlobalDataFragment.currentCenter = ShoppingCenter.makeFor(getResources(), PreferenceManager.getDefaultSharedPreferences(this), centerName);
+            GlobalDataFragment.shopDirectory = new ShopDirectory();
+            GlobalDataFragment.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
+            GlobalDataFragment.mallGraph = new Graph();
+            GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
+            GlobalDataFragment.offlineWifiScanner = null;
+            GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(GlobalDataFragment.currentCenter.getConnectionPoints(),
+                    GlobalDataFragment.currentCenter.getSummaryInputStream());
+        }
+
         //Add floormap view
         setContentView(R.layout.activity_record);
         LinearLayout myLayout = (LinearLayout)findViewById(R.id.layout_canvas);
@@ -124,66 +126,21 @@ public class RecordActivity extends Activity
                 LinearLayout.LayoutParams.MATCH_PARENT));
         myLayout.addView(floorMapView);
 
+        // Set the available levels
         spinnerCurrentLevel = (Spinner)findViewById(R.id.spinner_current_level);
         spinnerCurrentLevel.setOnItemSelectedListener(this);
-
-        String[] categoryArray = new String[floorplans.get(currentPlan).descriptions.size()];
-        floorplans.get(currentPlan).descriptions.toArray(categoryArray);
+        String[] categoryArray = GlobalDataFragment.currentCenter.getLevels();
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categoryArray);
         spinnerCurrentLevel.setAdapter(adapter);
 
-        FragmentManager fm = getFragmentManager();
-        GlobalDataFragment globalData = (GlobalDataFragment) fm.findFragmentByTag("data");
-        // create the fragment and data the first time
-        if (globalData == null) {
-            // add the fragment
-            globalData = new GlobalDataFragment();
-            fm.beginTransaction().add(globalData, "data").commit();
+        setLevel(level);
 
-            GlobalDataFragment.shopDirectory = new ShopDirectory();
-            GlobalDataFragment.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
-            GlobalDataFragment.mallGraph = new Graph();
-            GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
-            GlobalDataFragment.offlineWifiScanner = null;
-            GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
-        }
-
-        setLevel(levelDescriptionToUse);
         floorMapView.setAutoScroll(mPrefs.getBoolean(PREF_AUTOSCROLL, true));
         floorMapView.setShowDebug(mPrefs.getBoolean(PREF_SHOWDEBUG, true));
         if (savedInstanceState!=null) {
-            Bundle floorMapViewState = savedInstanceState.getBundle("floorMapViewState");
+            Bundle floorMapViewState = savedInstanceState.getBundle(SAVED_FLOORMAP_STATE);
             floorMapView.setState(floorMapViewState);
         }
-    }
-
-
-    /**
-     * The points at which WIFI fingerprints are known.
-     */
-    private InputStream getSummaryInputStream() {
-        InputStream inputStream;
-        if (currentPlan.equalsIgnoreCase("greenstone")) {
-            inputStream = getResources().openRawResource(R.raw.greenstone_summary);
-        } else if (currentPlan.equalsIgnoreCase("home")) {
-            inputStream = getResources().openRawResource(R.raw.home_summary);
-        } else {
-            throw new IndexOutOfBoundsException("Not a known location");
-        }
-        return inputStream;
-    }
-
-
-    private InputStream getMacInputStream() {
-        InputStream inputStream;
-        if (currentPlan.equalsIgnoreCase("greenstone")) {
-            inputStream = getResources().openRawResource(R.raw.greenstone_macs);
-        } else if (currentPlan.equalsIgnoreCase("home")) {
-            inputStream = getResources().openRawResource(R.raw.home_macs);
-        } else {
-            throw new IndexOutOfBoundsException("Not a known location");
-        }
-        return inputStream;
     }
 
 
@@ -194,14 +151,14 @@ public class RecordActivity extends Activity
 
         if (GlobalDataFragment.locator==null) {
             Log.d("LOC", "no previous locator found, starting a new one");
-            GlobalDataFragment.locator = new RecordForLocation(getLocationParameters(currentPlan),
-                    this, new WifiScanner(wifiManager, getMacInputStream()));
+            GlobalDataFragment.locator = new RecordForLocation( GlobalDataFragment.currentCenter.getLocationParameters(),
+                    this, new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream()));
         } else if (GlobalDataFragment.offlineWifiScanner!=null) {
                 Log.d("LOC","offline scanner found, using that");
                 GlobalDataFragment.locator.resetReferences(this, GlobalDataFragment.offlineWifiScanner);
         } else {
-            Log.d("LOC","No locator started, becasue one is already running");
-            GlobalDataFragment.locator.resetReferences(this, new WifiScanner(wifiManager, getMacInputStream()));
+            Log.d("LOC","No locator started, because one is already running");
+            GlobalDataFragment.locator.resetReferences(this, new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream()));
         }
         sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         GlobalDataFragment.locator.start();
@@ -265,9 +222,7 @@ public class RecordActivity extends Activity
     }
 
     private void updateFloorplan() {
-        Bitmap floorMapImage = BitmapFactory.decodeResource(this.getResources(),
-                floorplans.get(currentPlan).GetResource(currentLevel));
-
+        Bitmap floorMapImage = GlobalDataFragment.currentCenter.getImage(currentLevelID);
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
         floorMapView.setImage(floorMapImage, density, currentLevelID);
@@ -281,7 +236,7 @@ public class RecordActivity extends Activity
     public void makeRecording(final float x, final float y, final int level, final int delay) {
         String nStr = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_number_of_scans), "20");
         final int N = Integer.parseInt(nStr);
-        final WifiStrengthRecorder wifiRecorder = new WifiStrengthRecorder(currentPlan, wifiManager, this);
+        final WifiStrengthRecorder wifiRecorder = new WifiStrengthRecorder(GlobalDataFragment.currentCenter.getDescriptionShort(), wifiManager, this);
         new Thread(new Runnable() {
             public void run() {
                 wifiRecorder.MakeRecording(x, y, level, N, delay);
@@ -289,46 +244,8 @@ public class RecordActivity extends Activity
         }).start();
     }
 
-    private String getPref(int id){
+    public String getPref(int id){
         return PreferenceManager.getDefaultSharedPreferences(this).getString(getString(id), null);
-    }
-
-    public RecordForLocation.Parameters getLocationParameters(String location)
-    {
-        switch (location) {
-            case "Home":
-            {
-                float pxPerM = 38.0f;
-                float walkingPace =  2.0f; // m/s FAST: 7.6km/h;
-                float errorAccommodationM = 0.0f; // Distance that is allowed to move in zero time
-                int lengthMovingObs = 3;
-                int minLengthStationaryObs = 5;
-                int maxLengthStationaryObs = 20;
-                boolean updateForSamePos = true;
-                float stickyMinImprovement = 5.0f; // The amount by which the new score must be better than the last during the sticky period
-                int stickyMaxTime = 3000;
-                return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,
-                        minLengthStationaryObs,maxLengthStationaryObs,updateForSamePos,stickyMinImprovement,stickyMaxTime);
-            }
-            case "Greenstone":
-            {
-                float pxPerM = 4.2f;
-                float walkingPace =  Float.parseFloat(getPref(R.string.key_location_walking_pace));
-                float errorAccommodationM = Float.parseFloat(getPref(R.string.key_location_error_accommodation));
-                int lengthMovingObs = Integer.parseInt(getPref(R.string.key_location_length_moving_obs));
-                int minLengthStationaryObs = Integer.parseInt(getPref(R.string.key_location_min_length_stationary_obs));
-                int maxLengthStationaryObs = Integer.parseInt(getPref(R.string.key_location_max_length_stationary_obs));
-                boolean updateForSamePos = PreferenceManager.getDefaultSharedPreferences(this).getBoolean(getString(R.string.key_location_update_same_place), true);
-                float stickyMinImprovement = Float.parseFloat(getPref(R.string.key_location_sticky_min_improvement));
-                int stickyMaxTime = Integer.parseInt(getPref(R.string.key_location_sticky_max_time));
-                return new RecordForLocation().new Parameters(pxPerM,walkingPace,errorAccommodationM,lengthMovingObs,
-                        minLengthStationaryObs,maxLengthStationaryObs,updateForSamePos,stickyMinImprovement,stickyMaxTime);
-           }
-            default: {
-                return null;
-            }
-        }
-
     }
 
     /**
@@ -344,7 +261,7 @@ public class RecordActivity extends Activity
             GlobalDataFragment.locator.clearReferences();
             GlobalDataFragment.locator.stop();
         }
-        GlobalDataFragment.locator = new RecordForLocation(getLocationParameters(currentPlan), this, wifiScanner);
+        GlobalDataFragment.locator = new RecordForLocation(GlobalDataFragment.currentCenter.getLocationParameters(), this, wifiScanner);
         sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         GlobalDataFragment.locator.start();
     }
@@ -395,7 +312,6 @@ public class RecordActivity extends Activity
             }
             case R.id.menu_search: {
                 Intent intent = new Intent(this, SearchShopActivity.class);
-                intent.putExtra("location", currentPlan);
                 startActivityForResult(intent, REQUEST_CODE_SEARCH_SHOP);
                 return true;
             }
@@ -407,7 +323,7 @@ public class RecordActivity extends Activity
                 floorMapView.setShowDebug(showDebug);
                 SharedPreferences.Editor ed = mPrefs.edit();
                 ed.putBoolean(PREF_SHOWDEBUG, showDebug);
-                ed.commit();
+                ed.apply();
                 return true;
             }
             case R.id.menu_auto_scroll: {
@@ -418,7 +334,7 @@ public class RecordActivity extends Activity
                 floorMapView.setAutoScroll(autoScroll);
                 SharedPreferences.Editor ed = mPrefs.edit();
                 ed.putBoolean(PREF_AUTOSCROLL, autoScroll);
-                ed.commit();
+                ed.apply();
                 return true;
             }
             case R.id.menu_clear_route: {
@@ -428,7 +344,6 @@ public class RecordActivity extends Activity
             }
             case R.id.menu_continuous_record: {
                 Intent intent = new Intent(this, ContinuousRecordActivity.class);
-                intent.putExtra("location", currentPlan);
                 startActivity(intent);
                 return true;
             }
@@ -438,14 +353,8 @@ public class RecordActivity extends Activity
                 return true;
             }
             case R.id.menu_select_shopping_center: {
-                // TODO: Mustn't change location while locator is running.
-                popupMenu = new PopupMenuDialogFragment();
-                Bundle options = new Bundle();
-                options.putStringArrayList("options", new ArrayList<>(floorplans.keySet()));
-                options.putString("type", "location");
-                popupMenu.setArguments(options);
-                popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-                popupMenu.show(getFragmentManager(), "menu");
+                Intent intent = new Intent(this, SelectCenterActivity.class);
+                startActivityForResult(intent, REQUEST_CODE_SELECT_CENTER);
                 return true;
             }
             case R.id.menu_manual_record: {
@@ -453,19 +362,9 @@ public class RecordActivity extends Activity
                 startActivity(intent);
                 return true;
             }
-            case R.id.menu_select_level: {
-                popupMenu = new PopupMenuDialogFragment();
-                Bundle options = new Bundle();
-                options.putStringArrayList("options", floorplans.get(currentPlan).descriptions);
-                options.putString("type", "level");
-                popupMenu.setArguments(options);
-                popupMenu.setStyle(DialogFragment.STYLE_NO_TITLE, 0);
-                popupMenu.show(getFragmentManager(), "menu");
-                return true;
-            }
             case R.id.menu_test: {
                 Intent intent = new Intent(this, LoadTestActivity.class);
-                intent.putExtra("location", currentPlan);
+                intent.putExtra("location", GlobalDataFragment.currentCenter.getDescriptionShort());
                 startActivityForResult(intent, REQUEST_CODE_LOAD_TEST);
                 //runSimulatedPath();
                 return true;
@@ -509,10 +408,13 @@ public class RecordActivity extends Activity
             }
                 else {
 
-                Route route = GlobalDataFragment.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
-                GlobalDataFragment.latestRoute = route;
+                GlobalDataFragment.latestRoute = GlobalDataFragment.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
                 floorMapView.invalidate();
             }
+        }
+        if (requestCode == REQUEST_CODE_SELECT_CENTER && resultCode == RESULT_OK && data != null) {
+            String selectedCenter = data.getStringExtra(SelectCenterActivity.INTENT_EXTRA_SELECTED_CENTER);
+            setCurrentShoppingCenter(selectedCenter);
         }
 
     }
@@ -524,7 +426,7 @@ public class RecordActivity extends Activity
         Log.d(TAG,"Getting summary macs");
         String macFilename = pathFilename.replace("path", "macs");
         floorMapView.updateMovementStatus("Getting summary macs");
-        MacLookup summaryMacs = new MacLookup(getMacInputStream());
+        MacLookup summaryMacs = new MacLookup(GlobalDataFragment.currentCenter.getMacInputStream());
         Log.d(TAG,"Getting path macs");
         floorMapView.updateMovementStatus("Getting path macs");
         MacLookup pathMacs = new MacLookup("Greenstone", macFilename);
@@ -536,20 +438,19 @@ public class RecordActivity extends Activity
 
         Log.d(TAG,"Starting simulation");
         floorMapView.updateMovementStatus("Starting simulation");
-        setLocation("Greenstone");
+        setCurrentShoppingCenter("Greenstone");
         startLocating(GlobalDataFragment.offlineWifiScanner);
     }
 
 
     /**
-     * Sets the image and dots etc.
-     * @param newLevelID
+     * Sets the image and dots etc.  Only does this if the level changes
+     * @param newLevelID - the new levelID
      */
     public void setLevel(int newLevelID)
     {
         if (newLevelID!=currentLevelID) {
             currentLevelID = newLevelID;
-            currentLevel = floorplans.get(currentPlan).DescriptionFromID(newLevelID);
             updateFloorplan();
 
             floorMapView.setPreviousPoints(GlobalDataFragment.wifiFingerprintInfo.getXList(currentLevelID),
@@ -557,60 +458,39 @@ public class RecordActivity extends Activity
             floorMapView.invalidate();
 
             SharedPreferences.Editor ed = mPrefs.edit();
-            ed.putString("currentLevel", currentLevel);
-            ed.commit();
+            ed.putInt(SAVED_SHOPPING_CENTER_LEVEL, currentLevelID);
+            ed.apply();
         }
     }
 
-    /**
-     * Gets the id and calls  {@link #setLevel(int) setLevel}
-     * @param newLevelDescription
-     */
-    public void setLevel(String newLevelDescription)
-    {
-        setLevel(floorplans.get(currentPlan).IDFromDescription(newLevelDescription));
-    }
-
-    public void setLocation(String value) {
-        currentPlan = value;
-
-        // read the files that store previous points
+    public void setCurrentShoppingCenter(String centerName) {
+        ShoppingCenter.makeFor(getResources(), PreferenceManager.getDefaultSharedPreferences(this), centerName);
         // TODO: If this ends up being slow do it on another thread.
-        GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(locationConnectionPoints.get(currentPlan), getSummaryInputStream());
+        GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(
+                GlobalDataFragment.currentCenter.getConnectionPoints(),
+                GlobalDataFragment.currentCenter.getSummaryInputStream());
+
         SharedPreferences.Editor ed = mPrefs.edit();
-        ed.putString("currentPlan", currentPlan);
-        ed.commit();
-        setLevel(floorplans.get(currentPlan).GetDefaultLevel());
+        ed.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getDescriptionShort());
+        ed.apply();
+        setLevel(GlobalDataFragment.currentCenter.getDefaultLevel());
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString("currentPlan", currentPlan);
-        outState.putString("currentLevel", currentLevel);
-        outState.putBundle("floorMapViewState", floorMapView.getState());
+        outState.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getDescriptionShort());
+        outState.putInt(SAVED_SHOPPING_CENTER_LEVEL, currentLevelID);
+        outState.putBundle(SAVED_FLOORMAP_STATE, floorMapView.getState());
     }
 
     /**
      * This handles the button clicking on the submenus that pop up for various reasons.
-     * @param results
      */
     @Override
     public void onOptionSet(Bundle results) {
         String type = results.getString("type");
         switch (type) {
-            case "location":
-                if (!currentPlan.equals(results.getString("value"))) {
-                    setLocation(results.getString("value"));
-                }
-                popupMenu.dismiss();
-                return;
-            case "level":
-                if (!currentLevel.equals(results.getString("value"))) {
-                    setLevel(results.getString("value"));
-                }
-                popupMenu.dismiss();
-                return;
             case "record":
                 String value = results.getString("value");
                 switch (value) {
@@ -654,58 +534,16 @@ public class RecordActivity extends Activity
             String nStr = sharedPreferences.getString(getString(R.string.key_number_of_scans), "5");
             Log.d("TAG",nStr);
         }
-
     }
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        //TODO: Implement
+        int level = GlobalDataFragment.currentCenter.getLevel(spinnerCurrentLevel.getSelectedItem().toString());
+        setLevel(level);
     }
 
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
 
-    }
-
-    /**
-     * Keeps the floormaps indexed by the location name and then a number and description for the levels.
-     */
-    private class FloorPlanImageList{
-        private List<Integer> ids = new ArrayList<>();
-        public ArrayList<String> descriptions = new ArrayList<String>();
-        private List<Integer> resourceIDs = new ArrayList<>();
-        public FloorPlanImageList(){}
-        public void add(int id, String description, int resourceID)
-        {
-            this.ids.add(id);
-            this.descriptions.add(description);
-            this.resourceIDs.add(resourceID);
-        }
-        public int IDFromDescription(String description){
-            Integer pos = descriptions.indexOf(description);
-            if (pos>=0) return ids.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public String DescriptionFromID(Integer id){
-            Integer pos = ids.indexOf(id);
-            if (pos>=0) return descriptions.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public Integer GetResource(Integer id)
-        {
-            Integer pos = ids.indexOf(id);
-            if (pos>=0) return resourceIDs.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided id does not exist in the list");
-        }
-        public Integer GetResource(String description)
-        {
-            Integer pos = descriptions.indexOf(description);
-            if (pos>=0) return resourceIDs.get(pos);
-            else throw new ArrayIndexOutOfBoundsException("provided description does not exist in the list");
-        }
-        public String GetDefaultLevel()
-        {
-            return descriptions.get(0);
-        }
     }
 }

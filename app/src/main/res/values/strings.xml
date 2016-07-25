@@ -10,7 +10,7 @@
     <string name="pref_header_location">Location</string>
 
     <string name="key_number_of_scans">number_of_scans_list</string>
-    <string name="key_location_walking_pace">key_location_walking_pace</string>
+        <string name="key_location_walking_pace">key_location_walking_pace</string>
     <string name="key_location_error_accommodation">key_location_error_accommodation</string>
     <string name="key_location_length_moving_obs">key_location_length_moving_obs</string>
     <string name="key_location_min_length_stationary_obs">key_location_min_length_stationary_obs</string>
