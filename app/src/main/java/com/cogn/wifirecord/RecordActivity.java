@@ -229,7 +229,6 @@ public class RecordActivity extends Activity
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
         Bitmap scaledFloormapImage = getResizedBitmap(floorMapImage, density);
-        floorMapImage.recycle();
         floorMapView.setImage(scaledFloormapImage, density, currentLevelID);
     }
 
@@ -244,7 +243,6 @@ public class RecordActivity extends Activity
         // "RECREATE" THE NEW BITMAP
         Bitmap resizedBitmap = Bitmap.createBitmap(
                 bm, 0, 0, width, height, matrix, false);
-        bm.recycle();
         return resizedBitmap;
     }
 

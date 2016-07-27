@@ -242,6 +242,10 @@ public class ShoppingCenter {
     public String getPathName() {
         return path;
     }
+
+    public String getName() {
+        return name;
+    }
 }
 
 
