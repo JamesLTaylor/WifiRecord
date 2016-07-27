@@ -115,5 +115,4 @@ public class ShopDirectory {
         return shopNames;
     }
 
-
 }

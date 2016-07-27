@@ -304,7 +304,7 @@ public class ContinuousRecordActivity extends Activity
 
     private String[] getPathDescriptionsFromFile() {
         List<String> descriptionList = new ArrayList<>();
-        InputStream inputStream = this.getResources().openRawResource(R.raw.greenstone_path_descriptions);
+        InputStream inputStream = GlobalDataFragment.currentCenter.getPathDescriptions(getResources());
         BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
         try {
             String str;

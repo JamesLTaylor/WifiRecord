@@ -1,0 +1,15 @@
+<details>
+    <name>Greenstone</name>
+    <pxPerM>4.2</pxPerM>
+    <files>
+        <wifiFingerPrint>greenstone_summary.txt</wifiFingerPrint>
+        <wifiMacs>greenstone_macs.txt</wifiMacs>
+        <mallGraph>greenstone_graph.json</mallGraph>
+        <shopDirectory>shop_locations.csv</shopDirectory>
+        <pathDescriptions>greenstone_path_descriptions.txt</pathDescriptions>
+    </files>
+    <levels>
+        <item id="0" name="Lower Level" resource="greenstone_lower.png" >Lower Level</item>
+        <item id="1" name="Upper Level" resource="greenstone_upper.png">Upper Level</item>
+    </levels>
+</details>

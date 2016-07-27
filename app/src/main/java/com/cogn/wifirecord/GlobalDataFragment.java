@@ -3,13 +3,14 @@ package com.cogn.wifirecord;
 import android.app.Fragment;
 import android.os.Bundle;
 
+import java.util.Map;
+
 /**
  * Objects used by all activities
  */
 public class GlobalDataFragment extends Fragment {
+    public static Map<String, String> centerNamesAndFolders;
     public static ShoppingCenter currentCenter;
-    public static ShopDirectory shopDirectory;
-    public static Graph mallGraph;
     public static OfflineWifiScanner offlineWifiScanner;
     public static WifiFingerprintInfo wifiFingerprintInfo;
     public static RecordForLocation locator = null;

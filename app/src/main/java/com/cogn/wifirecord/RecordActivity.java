@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.net.wifi.WifiManager;
@@ -95,7 +96,7 @@ public class RecordActivity extends Activity
             centerName = savedInstanceState.getString(SAVED_SHOPPING_CENTER_NAME);
             level = savedInstanceState.getInt(SAVED_SHOPPING_CENTER_LEVEL);
         } else {
-            centerName = mPrefs.getString(SAVED_SHOPPING_CENTER_NAME, "Greenstone");
+            centerName = mPrefs.getString(SAVED_SHOPPING_CENTER_NAME, ShoppingCenter.getDefaultCenter());
             level = mPrefs.getInt(SAVED_SHOPPING_CENTER_LEVEL, 0);
         }
 
@@ -106,14 +107,11 @@ public class RecordActivity extends Activity
             // add the fragment
             globalData = new GlobalDataFragment();
             fm.beginTransaction().add(globalData, "data").commit();
-            GlobalDataFragment.currentCenter = ShoppingCenter.makeFor(getResources(), PreferenceManager.getDefaultSharedPreferences(this), centerName);
-            GlobalDataFragment.shopDirectory = new ShopDirectory();
-            GlobalDataFragment.shopDirectory.loadFromFile(getResources().openRawResource(R.raw.shop_locations));
-            GlobalDataFragment.mallGraph = new Graph();
-            GlobalDataFragment.mallGraph.loadFromFile(getResources().openRawResource(R.raw.greenstone_graph), 4.2);
+            ShoppingCenter.populateGlobalCenterList();
+            GlobalDataFragment.currentCenter = new ShoppingCenter(getResources(), "Greenstone");
             GlobalDataFragment.offlineWifiScanner = null;
             GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(GlobalDataFragment.currentCenter.getConnectionPoints(),
-                    GlobalDataFragment.currentCenter.getSummaryInputStream());
+                    GlobalDataFragment.currentCenter.getWifiFingerPrints(getResources()));
         }
 
         //Add floormap view
@@ -151,14 +149,18 @@ public class RecordActivity extends Activity
 
         if (GlobalDataFragment.locator==null) {
             Log.d("LOC", "no previous locator found, starting a new one");
-            GlobalDataFragment.locator = new RecordForLocation( GlobalDataFragment.currentCenter.getLocationParameters(),
-                    this, new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream()));
+            GlobalDataFragment.locator = new RecordForLocation(
+                    GlobalDataFragment.currentCenter.getLocationParameters(
+                            PreferenceManager.getDefaultSharedPreferences(this), getResources()),
+                    this, new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream(getResources())));
+
         } else if (GlobalDataFragment.offlineWifiScanner!=null) {
                 Log.d("LOC","offline scanner found, using that");
                 GlobalDataFragment.locator.resetReferences(this, GlobalDataFragment.offlineWifiScanner);
         } else {
             Log.d("LOC","No locator started, because one is already running");
-            GlobalDataFragment.locator.resetReferences(this, new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream()));
+            GlobalDataFragment.locator.resetReferences(this,
+                    new WifiScanner(wifiManager, GlobalDataFragment.currentCenter.getMacInputStream(getResources())));
         }
         sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         GlobalDataFragment.locator.start();
@@ -222,10 +224,28 @@ public class RecordActivity extends Activity
     }
 
     private void updateFloorplan() {
-        Bitmap floorMapImage = GlobalDataFragment.currentCenter.getImage(currentLevelID);
+        Bitmap floorMapImage = GlobalDataFragment.currentCenter.getImage(currentLevelID, getResources());
+
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density; // Later use this to get the scale image size.  Real pixels * density.
-        floorMapView.setImage(floorMapImage, density, currentLevelID);
+        Bitmap scaledFloormapImage = getResizedBitmap(floorMapImage, density);
+        floorMapImage.recycle();
+        floorMapView.setImage(scaledFloormapImage, density, currentLevelID);
+    }
+
+    public Bitmap getResizedBitmap(Bitmap bm, float scale) {
+        int width = bm.getWidth();
+        int height = bm.getHeight();
+        // CREATE A MATRIX FOR THE MANIPULATION
+        Matrix matrix = new Matrix();
+        // RESIZE THE BIT MAP
+        matrix.postScale(scale, scale);
+
+        // "RECREATE" THE NEW BITMAP
+        Bitmap resizedBitmap = Bitmap.createBitmap(
+                bm, 0, 0, width, height, matrix, false);
+        bm.recycle();
+        return resizedBitmap;
     }
 
 
@@ -236,7 +256,7 @@ public class RecordActivity extends Activity
     public void makeRecording(final float x, final float y, final int level, final int delay) {
         String nStr = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.key_number_of_scans), "20");
         final int N = Integer.parseInt(nStr);
-        final WifiStrengthRecorder wifiRecorder = new WifiStrengthRecorder(GlobalDataFragment.currentCenter.getDescriptionShort(), wifiManager, this);
+        final WifiStrengthRecorder wifiRecorder = new WifiStrengthRecorder(GlobalDataFragment.currentCenter.getPathName(), wifiManager, this);
         new Thread(new Runnable() {
             public void run() {
                 wifiRecorder.MakeRecording(x, y, level, N, delay);
@@ -261,7 +281,10 @@ public class RecordActivity extends Activity
             GlobalDataFragment.locator.clearReferences();
             GlobalDataFragment.locator.stop();
         }
-        GlobalDataFragment.locator = new RecordForLocation(GlobalDataFragment.currentCenter.getLocationParameters(), this, wifiScanner);
+        GlobalDataFragment.locator = new RecordForLocation(
+                GlobalDataFragment.currentCenter.getLocationParameters(
+                        PreferenceManager.getDefaultSharedPreferences(this), getResources()),
+                this, wifiScanner);
         sensorMan.registerListener(GlobalDataFragment.locator, accelerometer, SensorManager.SENSOR_DELAY_UI);
         GlobalDataFragment.locator.start();
     }
@@ -364,7 +387,7 @@ public class RecordActivity extends Activity
             }
             case R.id.menu_test: {
                 Intent intent = new Intent(this, LoadTestActivity.class);
-                intent.putExtra("location", GlobalDataFragment.currentCenter.getDescriptionShort());
+                intent.putExtra("location", GlobalDataFragment.currentCenter.getPathName());
                 startActivityForResult(intent, REQUEST_CODE_LOAD_TEST);
                 //runSimulatedPath();
                 return true;
@@ -380,7 +403,8 @@ public class RecordActivity extends Activity
         //super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_CODE_LOAD_TEST && resultCode == RESULT_OK && data != null) {
             String filename = data.getStringExtra(LoadTestActivity.EXTRA_FILENAME);
-            runSimulatedPath(filename);
+            String centerName = data.getStringExtra(LoadTestActivity.EXTRA_CENTER_NAME);
+            runSimulatedPath(centerName, filename);
             return;
         }
         if (requestCode == REQUEST_CODE_SEARCH_SHOP && resultCode == RESULT_OK && data != null) {
@@ -390,7 +414,7 @@ public class RecordActivity extends Activity
             Log.d(TAG, "" + directions);
             Log.d(TAG, category);
             Log.d(TAG, shopName);
-            Shop shop = GlobalDataFragment.shopDirectory.getShop(category, shopName);
+            Shop shop = GlobalDataFragment.currentCenter.getShopDirectory().getShop(category, shopName);
             for (int i = 0; i < shop.getEntranceLocations().size(); i++) {
                 floorMapView.addShop(shopName,
                         shop.getEntranceLocations().get(i).x,
@@ -408,7 +432,7 @@ public class RecordActivity extends Activity
             }
                 else {
 
-                GlobalDataFragment.latestRoute = GlobalDataFragment.mallGraph.getRoute(floorMapView.getCurrentPosition(), shop);
+                GlobalDataFragment.latestRoute = GlobalDataFragment.currentCenter.getMallGraph().getRoute(floorMapView.getCurrentPosition(), shop);
                 floorMapView.invalidate();
             }
         }
@@ -422,23 +446,23 @@ public class RecordActivity extends Activity
     /**
      * Replaces the wifi readings with readings from a file and starts locating
      */
-    private void runSimulatedPath(String pathFilename) {
+    private void runSimulatedPath(String centerName, String pathFilename) {
         Log.d(TAG,"Getting summary macs");
         String macFilename = pathFilename.replace("path", "macs");
         floorMapView.updateMovementStatus("Getting summary macs");
-        MacLookup summaryMacs = new MacLookup(GlobalDataFragment.currentCenter.getMacInputStream());
+        MacLookup summaryMacs = new MacLookup(GlobalDataFragment.currentCenter.getMacInputStream(getResources()));
         Log.d(TAG,"Getting path macs");
         floorMapView.updateMovementStatus("Getting path macs");
-        MacLookup pathMacs = new MacLookup("Greenstone", macFilename);
+        MacLookup pathMacs = new MacLookup(centerName, macFilename);
 
         Log.d(TAG,"Processing path");
         floorMapView.updateMovementStatus("Processing path");
-        GlobalDataFragment.offlineWifiScanner = new OfflineWifiScanner(pathFilename, "Greenstone" , summaryMacs, pathMacs,
+        GlobalDataFragment.offlineWifiScanner = new OfflineWifiScanner(pathFilename, centerName , summaryMacs, pathMacs,
                 Calendar.getInstance().getTimeInMillis());
 
         Log.d(TAG,"Starting simulation");
         floorMapView.updateMovementStatus("Starting simulation");
-        setCurrentShoppingCenter("Greenstone");
+        setCurrentShoppingCenter(centerName);
         startLocating(GlobalDataFragment.offlineWifiScanner);
     }
 
@@ -464,14 +488,14 @@ public class RecordActivity extends Activity
     }
 
     public void setCurrentShoppingCenter(String centerName) {
-        ShoppingCenter.makeFor(getResources(), PreferenceManager.getDefaultSharedPreferences(this), centerName);
+        GlobalDataFragment.currentCenter = new ShoppingCenter(getResources(), centerName);
         // TODO: If this ends up being slow do it on another thread.
         GlobalDataFragment.wifiFingerprintInfo = new WifiFingerprintInfo(
                 GlobalDataFragment.currentCenter.getConnectionPoints(),
-                GlobalDataFragment.currentCenter.getSummaryInputStream());
+                GlobalDataFragment.currentCenter.getWifiFingerPrints(getResources()));
 
         SharedPreferences.Editor ed = mPrefs.edit();
-        ed.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getDescriptionShort());
+        ed.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getPathName());
         ed.apply();
         setLevel(GlobalDataFragment.currentCenter.getDefaultLevel());
     }
@@ -479,7 +503,7 @@ public class RecordActivity extends Activity
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getDescriptionShort());
+        outState.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getPathName());
         outState.putInt(SAVED_SHOPPING_CENTER_LEVEL, currentLevelID);
         outState.putBundle(SAVED_FLOORMAP_STATE, floorMapView.getState());
     }

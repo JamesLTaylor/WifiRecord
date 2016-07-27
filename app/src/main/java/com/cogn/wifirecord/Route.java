@@ -60,7 +60,7 @@ public class Route {
 
         double separationM = 5;
         double separationPx = separationM*pxPerM;
-        List<Shop> shops = GlobalDataFragment.shopDirectory.getAllShops();
+        List<Shop> shops = GlobalDataFragment.currentCenter.getShopDirectory().getAllShops();
         for (Shop shop : shops) {
             for (int i = 0; i < shop.entranceLocations.size(); i++) {
                 Double[] dFracXAndY = closest(shop.entranceLocations.get(i));

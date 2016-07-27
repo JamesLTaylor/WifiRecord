@@ -23,7 +23,10 @@ public class LoadTestActivity extends Activity
 implements AdapterView.OnItemSelectedListener, View.OnClickListener {
 
     public static final String EXTRA_FILENAME = "com.cogn.wifirecord.LOAD_TEST_FILENAME";
+    public static final String EXTRA_CENTER_NAME = "com.cogn.wifirecord.EXTRA_CENTER_NAME";;
+
     private Map<String, Map<String, Map<String, String>>> devicePathDateFname;  //Device, description, date, filename
+    private String centerName;
     private Spinner deviceSpinner;
     private Spinner descriptionSpinner;
     private Spinner datetimeSpinner;
@@ -36,8 +39,8 @@ implements AdapterView.OnItemSelectedListener, View.OnClickListener {
         getActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent myIntent = getIntent();
-        String location = myIntent.getStringExtra("location");
-        getFiles(location);
+        String centerName = myIntent.getStringExtra("location");
+        getFiles(centerName);
 
         deviceSpinner = (Spinner) findViewById(R.id.load_test_device_name);
         descriptionSpinner = (Spinner) findViewById(R.id.load_test_path_name);
@@ -150,6 +153,7 @@ implements AdapterView.OnItemSelectedListener, View.OnClickListener {
         String filename = ((TextView)findViewById(R.id.load_test_filename)).getText().toString();
         Intent resultIntent = new Intent();
         resultIntent.putExtra(EXTRA_FILENAME, filename);
+        resultIntent.putExtra(EXTRA_CENTER_NAME, centerName);
         setResult(Activity.RESULT_OK, resultIntent);
         finish();
 
