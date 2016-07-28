@@ -77,9 +77,9 @@ public class Graph {
                 e.printStackTrace();
             }
         }
-
-
     }
+
+
 
     /**
      * Finds the shortest distance on the graph between two points.
@@ -162,6 +162,18 @@ public class Graph {
         }
         route.createDescription();
         return route;
+    }
+
+    public ConnectionPointsNew getConnectionPoints() {
+        ConnectionPointsNew connectionPoints = new ConnectionPointsNew();
+        for(int i = 0; i < nodes.size(); i++) {
+            Node node = nodes.valueAt(i);
+            for (Integer connectedIndex : node.connected) {
+                if (node.pos.level!=nodes.get(connectedIndex).pos.level)
+                    connectionPoints.addConnection(node.pos, nodes.get(connectedIndex).pos);
+            }
+        }
+        return connectionPoints;
     }
 
 

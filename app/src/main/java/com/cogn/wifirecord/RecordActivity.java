@@ -183,7 +183,7 @@ public class RecordActivity extends Activity
         optionsMenu = menu;
         getMenuInflater().inflate(R.menu.record, menu);
 
-        optionsMenu.findItem(R.id.menu_show_debug).setVisible(false);
+        //optionsMenu.findItem(R.id.menu_show_debug).setVisible(false);
 
         optionsMenu.findItem(R.id.menu_auto_scroll).setChecked(mPrefs.getBoolean(PREF_AUTOSCROLL, true));
         optionsMenu.findItem(R.id.menu_show_debug).setChecked(mPrefs.getBoolean(PREF_SHOWDEBUG, true));
@@ -472,12 +472,22 @@ public class RecordActivity extends Activity
     public void setLevel(int newLevelID)
     {
         if (newLevelID!=currentLevelID) {
+            Position screenCenter = floorMapView.getScreenCenter();
+            Position correspondingCenter = null;
+
+            if (screenCenter!=null) {
+                correspondingCenter = GlobalDataFragment.currentCenter.getPositionOnOtherLevel(screenCenter, newLevelID);
+            }
             currentLevelID = newLevelID;
             updateFloorplan();
 
             floorMapView.setPreviousPoints(GlobalDataFragment.wifiFingerprintInfo.getXList(currentLevelID),
                     GlobalDataFragment.wifiFingerprintInfo.getYList(currentLevelID));
             floorMapView.invalidate();
+
+            if (correspondingCenter!=null) {
+                floorMapView.centerOnXY(correspondingCenter.x, correspondingCenter.y);
+            }
 
             SharedPreferences.Editor ed = mPrefs.edit();
             ed.putInt(SAVED_SHOPPING_CENTER_LEVEL, currentLevelID);
@@ -496,6 +506,7 @@ public class RecordActivity extends Activity
         ed.putString(SAVED_SHOPPING_CENTER_NAME, GlobalDataFragment.currentCenter.getPathName());
         ed.apply();
         setLevel(GlobalDataFragment.currentCenter.getDefaultLevel());
+
     }
 
     @Override

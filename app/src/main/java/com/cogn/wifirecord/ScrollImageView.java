@@ -23,7 +23,6 @@ import java.util.List;
 Taken from https://sites.google.com/site/androidhowto/how-to-1/custom-scrollable-image-view
  */
 public class ScrollImageView extends View {
-    private long startTimeMillis;
     private String movementStatus = null;
     private float originalTouchX;
     private float originalTouchY;
@@ -32,7 +31,7 @@ public class ScrollImageView extends View {
     private final int DEFAULT_PADDING = 0;
     private Display mDisplay;
     private Bitmap mImage;
-    private Integer displayLevel;
+    private Integer currentLevel;
     private Paint imagePaint = new Paint();
     private float density;
     private int mPadding;
@@ -110,7 +109,6 @@ public class ScrollImageView extends View {
         super(context);
         this.recordMenuMaker = recordMenuMaker;
         initScrollImageView(context);
-        startTimeMillis = Calendar.getInstance().getTimeInMillis();
     }
 
     private void initScrollImageView(Context context) {
@@ -170,15 +168,48 @@ public class ScrollImageView extends View {
     public Bitmap getImage() {
         return mImage;
     }
+
+    /**
+     * Centres the image on the current location.
+     */
+    public void centerOnXY(float x, float y) {
+        mTotalX = getMeasuredWidth() / 2 - x;
+        mTotalY = getMeasuredHeight() / 2 - y;
+        if (mTotalX > mPadding)
+            mTotalX = mPadding;
+        if (mTotalX <= getMeasuredWidth() - mImage.getWidth() - mPadding)
+            mTotalX = getMeasuredWidth() - mImage.getWidth() - mPadding + 1;
+        if (mTotalY > mPadding)
+            mTotalY = mPadding;
+        if (mTotalY <= getMeasuredHeight() - mImage.getHeight() - mPadding)
+            mTotalY = getMeasuredHeight() - mImage.getHeight() - mPadding + 1;
+    }
     
     public Position getCurrentPosition(){
         if (currentX == null) return null;
-        return new Position(currentX/density, currentY/density, displayLevel);
+        return new Position(currentX/density, currentY/density, currentLevel);
+    }
+
+    public void setCurrentPosition(Position newPosition){
+        currentX = newPosition.x;
+        currentY = newPosition.y;
+
+    }
+
+    /**
+     *
+     * @return null if not enough has been set yet.
+     */
+    public Position getScreenCenter() {
+        if (currentLevel==null) return null;
+        float screenCenterX = getMeasuredWidth() / 2  - mTotalX;
+        float screenCenterY = getMeasuredHeight() / 2  - mTotalY;
+        return new Position(screenCenterX, screenCenterY, currentLevel);
     }
 
     public void setImage(Bitmap image, float density, int displayLevel) {
         this.density = density;
-        this.displayLevel = displayLevel;
+        this.currentLevel = displayLevel;
         mImage = image;
         latestTouchX = 0;
         latestTouchY = 0;
@@ -375,7 +406,7 @@ public class ScrollImageView extends View {
         canvas.drawBitmap(mImage, mTotalX, mTotalY, imagePaint);
         if (screenCenterX!=null)
         {
-            centerOnCurrentXY(screenCenterX, screenCenterY);
+            centerOnXY(screenCenterX, screenCenterY);
             screenCenterX = null;
             screenCenterY = null;
         }
@@ -403,7 +434,7 @@ public class ScrollImageView extends View {
         // Add shop names and path to canvas
         if (shopNames.size() > 0) {
             for (int i = 0; i < shopNames.size(); i++) {
-                if (shopLevels.get(i) == displayLevel) {
+                if (shopLevels.get(i) == currentLevel) {
                     drawShopTag(canvas, shopNames.get(i), shopXs.get(i), shopYs.get(i));
                 }
             }
@@ -411,7 +442,7 @@ public class ScrollImageView extends View {
         if (GlobalDataFragment.latestRoute != null) {
             Route route = GlobalDataFragment.latestRoute;
             for (int i = 0; i < (GlobalDataFragment.latestRoute.size() - 1); i++) {
-                if (route.get(i).level == displayLevel) {
+                if (route.get(i).level == currentLevel) {
                     if (route.get(i).level == route.get(i + 1).level) {
                         float x1 = route.get(i).x * density + mTotalX;
                         float y1 = route.get(i).y * density + mTotalY;
@@ -428,7 +459,7 @@ public class ScrollImageView extends View {
             for (Route.Description description : route.descriptions) {
                 Position entranceLocation = description.shop.entranceLocations.get(description.entranceNumber);
                 canvas.drawLine(description.pathX * density, description.pathY * density, entranceLocation.x * density, entranceLocation.y * density, shopRectPaint);
-                if (entranceLocation.level == displayLevel) {
+                if (entranceLocation.level == currentLevel) {
                     drawShopTag(canvas, description.shop.getName(), entranceLocation.x * density, entranceLocation.y * density);
                 }
             }
@@ -448,7 +479,7 @@ public class ScrollImageView extends View {
         // put the current location in the middle
         // Repair for any shifting that may have happened on a rotate
         if (autoScroll && currentX != null) {
-            centerOnCurrentXY(currentX, currentY);
+            centerOnXY(currentX, currentY);
         }
 
         if (showDebug) {
@@ -480,22 +511,6 @@ public class ScrollImageView extends View {
         }
     }
 
-
-    /**
-     * Centres the image on the current location.
-     */
-    private void centerOnCurrentXY(float x, float y) {
-        mTotalX = getMeasuredWidth() / 2 - x;
-        mTotalY = getMeasuredHeight() / 2 - y;
-        if (mTotalX > mPadding)
-            mTotalX = mPadding;
-        if (mTotalX <= getMeasuredWidth() - mImage.getWidth() - mPadding)
-            mTotalX = getMeasuredWidth() - mImage.getWidth() - mPadding + 1;
-        if (mTotalY > mPadding)
-            mTotalY = mPadding;
-        if (mTotalY <= getMeasuredHeight() - mImage.getHeight() - mPadding)
-            mTotalY = getMeasuredHeight() - mImage.getHeight() - mPadding + 1;
-    }
 
     /**
      * Add a set of circles to the image.
@@ -621,7 +636,7 @@ public class ScrollImageView extends View {
         this.bestGuessY = bestGuessY*density;
         this.bestGuessRadius = bestGuessRadius;
 
-        if (centerViewOnCurrent) centerOnCurrentXY(this.currentX, this.currentY);
+        if (centerViewOnCurrent) centerOnXY(this.currentX, this.currentY);
 
         invalidate();
     }

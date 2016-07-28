@@ -16,6 +16,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -202,6 +203,18 @@ public class ShoppingCenter {
 
     public ConnectionPoints getConnectionPoints(){
         return connectionPoints;
+    }
+
+    public Position getPositionOnOtherLevel(Position currentPosition, int newLevel){
+        if (currentPosition.level==newLevel) {
+            return new Position(currentPosition.x, currentPosition.y, currentPosition.level);
+        }
+        ConnectionPointsNew connections = mallGraph.getConnectionPoints();
+        List<Position> nearestConnection = connections.getNearestConnectionPoint(currentPosition, newLevel);
+        Float offsetX = nearestConnection.get(1).x - nearestConnection.get(0).x;
+        Float offsetY = nearestConnection.get(1).y - nearestConnection.get(0).y;
+        Position correspondingPostion = new Position(currentPosition.x+offsetX, currentPosition.y+offsetY, newLevel);
+        return correspondingPostion;
     }
 
     /**
