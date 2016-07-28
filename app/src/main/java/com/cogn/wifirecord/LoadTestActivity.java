@@ -52,7 +52,7 @@ implements AdapterView.OnItemSelectedListener, View.OnClickListener {
         Set<String> deviceSet = devicePathDateFname.keySet();
         String[] deviceArray = new String[deviceSet.size()];
         deviceSet.toArray(deviceArray);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, deviceArray);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_shops, deviceArray);
         Spinner spinner = (Spinner) findViewById(R.id.load_test_device_name);
         deviceSpinner.setAdapter(adapter);
 
@@ -117,7 +117,7 @@ implements AdapterView.OnItemSelectedListener, View.OnClickListener {
             Set<String> descriptionSet = devicePathDateFname.get(device).keySet();
             String[] descriptionArray = new String[descriptionSet.size()];
             descriptionSet.toArray(descriptionArray);
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, descriptionArray);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_shops, descriptionArray);
             descriptionSpinner.setAdapter(adapter);
         }
         if (parent.getId() == descriptionSpinner.getId()){
@@ -129,7 +129,7 @@ implements AdapterView.OnItemSelectedListener, View.OnClickListener {
             Set<String> set = devicePathDateFname.get(device).get(description).keySet();
             String[] array = new String[set.size()];
             set.toArray(array);
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, array);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_shops, array);
             datetimeSpinner.setAdapter(adapter);
         }
         if (parent.getId() == datetimeSpinner.getId()){

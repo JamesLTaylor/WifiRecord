@@ -128,7 +128,7 @@ public class RecordActivity extends Activity
         spinnerCurrentLevel = (Spinner)findViewById(R.id.spinner_current_level);
         spinnerCurrentLevel.setOnItemSelectedListener(this);
         String[] categoryArray = GlobalDataFragment.currentCenter.getLevels();
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categoryArray);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_level, categoryArray);
         spinnerCurrentLevel.setAdapter(adapter);
 
         setLevel(level);

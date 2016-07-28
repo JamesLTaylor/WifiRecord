@@ -38,7 +38,7 @@ public class SearchShopActivity extends Activity implements AdapterView.OnItemSe
 
         String[] categoryArray = GlobalDataFragment.currentCenter.getShopDirectory().listCategories();
         Arrays.sort(categoryArray);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, categoryArray);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_shops, categoryArray);
         categorySpinner.setAdapter(adapter);
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -55,7 +55,7 @@ public class SearchShopActivity extends Activity implements AdapterView.OnItemSe
             String selectedCategory = categorySpinner.getSelectedItem().toString();
             String[] shopNameArray = GlobalDataFragment.currentCenter.getShopDirectory().listShopNames(selectedCategory);
             Arrays.sort(shopNameArray);
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, shopNameArray);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item_shops, shopNameArray);
             shopNameSpinner.setAdapter(adapter);
 
             shopNameSpinner.setSelection(prefs.getInt(PREF_PREVIOUS_SHOP + ":" +

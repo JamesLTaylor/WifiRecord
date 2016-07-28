@@ -80,7 +80,7 @@ public class ContinuousRecordActivity extends Activity
         //TODO: Store these strings in a text file on the device
         String[] DESCRIPTIONS = getPathDescriptionsFromFile();
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_dropdown_item_1line, DESCRIPTIONS);
+                R.layout.spinner_item_shops, DESCRIPTIONS);
         Spinner spinner = (Spinner) findViewById(R.id.continuous_record_path_name);
         spinner.setAdapter(adapter);
 
